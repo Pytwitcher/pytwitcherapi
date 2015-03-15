@@ -7,3 +7,4 @@ History
 +++++++++++++++++++++++++++++++++++++++
 
 * First release on PyPI.
+* Pulled pytwitcherapi out of main project pytwitcher
