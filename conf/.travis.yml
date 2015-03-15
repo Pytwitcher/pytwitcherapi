@@ -27,7 +27,7 @@ deploy:
   provider: pypi
   user: storax
   password:
-    secure: SpkyYqs9g1Lx5EH3d28mommgkRcrKHcjwKXEcRuKDaCqXwYCIWX91oAboMd01vVLNZlDYTwfAFwmrJFqJG++cDtiqYllhmZRbCaPArnjphdETlTr50Jc5y/9yB2Qj9cjEskCQB3sXD0uPR4gNLUrCO6MZN0jMxBtOGvAMSEzGI4=
+    secure: SMPycU0K/uTFj78zCByL2wjetO/skrCWcfWA55H9BY0UpjS2/Gh1UKWqpsvhqB0/MUnm9K82UBnx0yk5jpqoTXX6ZpOk3HdfgOEEo66Kml0HENF29FAx4N/RbsqtB6S4px+UJJqEH7VZnefANuQAzE/f4+hOzLYkT8zPcy7GPZ0=
   on:
     tags: true
     repo: Pytwitcher/pytwitcherapi
