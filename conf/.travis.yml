@@ -1,0 +1,33 @@
+language: python
+python: 2.7
+env:
+  global:
+    LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
+  matrix:
+    - TOXENV=check
+{% for env, config in tox_environments|dictsort %}
+    - TOXENV={{ env }}{% if config.cover %},coveralls{% endif %}
+
+{% endfor %}
+before_install:
+  - python --version
+  - virtualenv --version
+  - pip --version
+  - uname -a
+  - lsb_release -a
+install:
+  - pip install tox
+script:
+  - tox -v
+notifications:
+  email:
+    on_success: never
+    on_failure: never
+deploy:
+  provider: pypi
+  user: storax
+  password:
+    secure: SpkyYqs9g1Lx5EH3d28mommgkRcrKHcjwKXEcRuKDaCqXwYCIWX91oAboMd01vVLNZlDYTwfAFwmrJFqJG++cDtiqYllhmZRbCaPArnjphdETlTr50Jc5y/9yB2Qj9cjEskCQB3sXD0uPR4gNLUrCO6MZN0jMxBtOGvAMSEzGI4=
+  on:
+    tags: true
+    repo: Pytwitcher/pytwitcherapi

@@ -1,0 +1,7 @@
+graft src
+
+include LICENSE
+include *.txt
+include *.rst
+
+global-exclude *.py[co] __pycache__
