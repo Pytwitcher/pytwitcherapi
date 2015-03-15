@@ -597,7 +597,7 @@ class Channel(object):
         :param banner: the link to the banner
         :type banner: :class:`str`
         :param video_banner: the link to the video banner
-        :type video_banner::class:`str`
+        :type video_banner: :class:`str`
         :param delay: stream delay
         :type delay: :class:`int`
         :raises: None
