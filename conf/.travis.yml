@@ -1,24 +1,23 @@
 language: python
 python: 2.7
 env:
-  global:
-    LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
+  global: LD_PRELOAD=/lib/x86_64-linux-gnu/libSegFault.so
   matrix:
-    - TOXENV=check
+  - TOXENV=check
 {% for env, config in tox_environments|dictsort %}
-    - TOXENV={{ env }}{% if config.cover %},coveralls{% endif %}
+  - TOXENV={{ env }}{% if config.cover %},coveralls{% endif %}
 
 {% endfor %}
 before_install:
-  - python --version
-  - virtualenv --version
-  - pip --version
-  - uname -a
-  - lsb_release -a
+- python --version
+- virtualenv --version
+- pip --version
+- uname -a
+- lsb_release -a
 install:
-  - pip install tox
+- pip install tox
 script:
-  - tox -v
+- tox -v
 notifications:
   email:
     on_success: never
@@ -26,8 +25,9 @@ notifications:
 deploy:
   provider: pypi
   user: storax
+  distributions: "sdist bdist_wheel"
   password:
-    secure: SMPycU0K/uTFj78zCByL2wjetO/skrCWcfWA55H9BY0UpjS2/Gh1UKWqpsvhqB0/MUnm9K82UBnx0yk5jpqoTXX6ZpOk3HdfgOEEo66Kml0HENF29FAx4N/RbsqtB6S4px+UJJqEH7VZnefANuQAzE/f4+hOzLYkT8zPcy7GPZ0=
+    secure: RAtgZwB9nudMI8LQ/WIJsqQzKsTOM0Y1v51yHbCJwyJeA1Uk+ZeMEOwLCfnk9401KvOJXmfryWExdWOaNhc7g5oP8RzG8Uo3jRop/7XGpUvMv63GCJ3dmq0NB+z0v0YIANWIF2vguKKtg22oQWTQePoSGpgQH6LIRzml+GFRuos=
   on:
     tags: true
     repo: Pytwitcher/pytwitcherapi

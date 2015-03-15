@@ -450,10 +450,10 @@ class Game(object):
         :rtype: :class:`Game`
         :raises: None
         """
-        g = cls(name=json['name'],
-                box=json['box'],
-                logo=json['logo'],
-                twitchid=json['_id'],
+        g = cls(name=json.get('name'),
+                box=json.get('box'),
+                logo=json.get('logo'),
+                twitchid=json.get('_id'),
                 viewers=viewers,
                 channels=channels)
         return g
@@ -548,21 +548,21 @@ class Channel(object):
         :rtype: :class:`Channel`
         :raises: None
         """
-        c = cls(name=json['name'],
-                status=json['status'],
-                displayname=json['display_name'],
-                game=json['game'],
-                twitchid=json['_id'],
-                views=json['views'],
-                followers=json['followers'],
-                url=json['url'],
-                language=json['language'],
-                broadcaster_language=json['broadcaster_language'],
-                mature=json['mature'],
-                logo=json['logo'],
-                banner=json['banner'],
-                video_banner=json['video_banner'],
-                delay=json['delay'])
+        c = cls(name=json.get('name'),
+                status=json.get('status'),
+                displayname=json.get('display_name'),
+                game=json.get('game'),
+                twitchid=json.get('_id'),
+                views=json.get('views'),
+                followers=json.get('followers'),
+                url=json.get('url'),
+                language=json.get('language'),
+                broadcaster_language=json.get('broadcaster_language'),
+                mature=json.get('mature'),
+                logo=json.get('logo'),
+                banner=json.get('banner'),
+                video_banner=json.get('video_banner'),
+                delay=json.get('delay'))
         return c
 
     def __init__(self, name, status, displayname, game, twitchid, views,
@@ -695,12 +695,12 @@ class Stream(object):
         """
         if json is None:
             return None
-        channel = Channel.wrap_json(json['channel'])
-        s = cls(game=json['game'],
+        channel = Channel.wrap_json(json.get('channel'))
+        s = cls(game=json.get('game'),
                 channel=channel,
-                twitchid=json['_id'],
-                viewers=json['viewers'],
-                preview=json['preview'])
+                twitchid=json.get('_id'),
+                viewers=json.get('viewers'),
+                preview=json.get('preview'))
         return s
 
     def __init__(self, game, channel, twitchid, viewers, preview):
