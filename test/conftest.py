@@ -80,10 +80,10 @@ def assert_game_equals_json(game, json):
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
     """
-    assert game.name == json["name"]
-    assert game.box == json["box"]
-    assert game.logo == json["logo"]
-    assert game.twitchid == json["_id"]
+    assert game.name == json.get("name")
+    assert game.box == json.get("box")
+    assert game.logo == json.get("logo")
+    assert game.twitchid == json.get("_id")
 
 
 @pytest.fixture(scope="function")
@@ -174,6 +174,8 @@ def get_channel_response(channel1json):
     return mockresponse
 
 
+
+
 def assert_channel_equals_json(channel, json):
     """Assert that the given channel resembles the given json
 
@@ -183,21 +185,21 @@ def assert_channel_equals_json(channel, json):
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
     """
-    assert channel.name == json['name']
-    assert channel.status == json['status']
-    assert channel.displayname == json['display_name']
-    assert channel.game == json['game']
-    assert channel.twitchid == json['_id']
-    assert channel.views == json['views']
-    assert channel.followers == json['followers']
-    assert channel.url == json['url']
-    assert channel.language == json['language']
-    assert channel.broadcaster_language == json['broadcaster_language']
-    assert channel.mature == json['mature']
-    assert channel.logo == json['logo']
-    assert channel.banner == json['banner']
-    assert channel.video_banner == json['video_banner']
-    assert channel.delay == json['delay']
+    assert channel.name == json.get('name')
+    assert channel.status == json.get('status')
+    assert channel.displayname == json.get('display_name')
+    assert channel.game == json.get('game')
+    assert channel.twitchid == json.get('_id')
+    assert channel.views == json.get('views')
+    assert channel.followers == json.get('followers')
+    assert channel.url == json.get('url')
+    assert channel.language == json.get('language')
+    assert channel.broadcaster_language == json.get('broadcaster_language')
+    assert channel.mature == json.get('mature')
+    assert channel.logo == json.get('logo')
+    assert channel.banner == json.get('banner')
+    assert channel.delay == json.get('delay')
+    assert channel.video_banner == json.get('video_banner')
 
 
 @pytest.fixture(scope="function")
@@ -278,11 +280,11 @@ def assert_stream_equals_json(stream, json):
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
     """
-    assert_channel_equals_json(stream.channel, json['channel'])
-    assert stream.game == json['game']
-    assert stream.viewers == json['viewers']
-    assert stream.twitchid == json['_id']
-    assert stream.preview == json['preview']
+    assert_channel_equals_json(stream.channel, json.get('channel'))
+    assert stream.game == json.get('game')
+    assert stream.viewers == json.get('viewers')
+    assert stream.twitchid == json.get('_id')
+    assert stream.preview == json.get('preview')
 
 
 @pytest.fixture(scope="function")
