@@ -6,7 +6,7 @@ import pytest
 import requests
 import requests.utils
 
-from pytwitcherapi import twitch
+from pytwitcherapi import twitch, models
 from test import conftest
 
 
@@ -170,7 +170,7 @@ def test_search_games(ts, games_search_response,
 
 
 def test_fetch_viewers(ts, mock_session_get_viewers):
-    game = twitch.Game(name="Test", box={}, logo={}, twitchid=214)
+    game = models.Game(name="Test", box={}, logo={}, twitchid=214)
     game2 = ts.fetch_viewers(game)
     # assert that attributes have been set
     assert game.viewers == 124
@@ -241,7 +241,7 @@ def test_search_channels(ts, search_channels_response,
 def test_get_stream(ts, get_stream_response, stream1json):
     requests.Session.request.return_value = get_stream_response
     s1 = ts.get_stream(stream1json['channel']['name'])
-    s2 = ts.get_stream(twitch.Channel.wrap_json(stream1json['channel']))
+    s2 = ts.get_stream(models.Channel.wrap_json(stream1json['channel']))
 
     # check result
     for s in [s1, s2]:
@@ -259,7 +259,7 @@ def test_get_streams(ts, search_streams_response, channel1,
     requests.Session.request.return_value = search_streams_response
     # check with different input types
     games = [game1json['name'],
-             twitch.Game.wrap_json(game1json)]
+             models.Game.wrap_json(game1json)]
     channels = [[channel1, 'asdf'], None]
     params = [{'game': game1json['name'],
               'channel': 'test_channel,asdf',
