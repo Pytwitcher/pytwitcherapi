@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import twitch, models
+from pytwitcherapi import models
 
 
 @pytest.fixture(scope="function")
@@ -172,8 +172,6 @@ def get_channel_response(channel1json):
     mockresponse = mock.Mock()
     mockresponse.json.return_value = channel1json
     return mockresponse
-
-
 
 
 def assert_channel_equals_json(channel, json):
