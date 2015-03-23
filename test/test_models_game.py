@@ -1,14 +1,14 @@
 import mock
 import pytest
 
-from pytwitcherapi import twitch
+from pytwitcherapi import models
 from test import conftest
 
 
 @pytest.fixture(scope='function')
 def game():
     n = 'Test Game'
-    g = twitch.Game(name=n, box={}, logo={}, twitchid=312, viewers=1, channels=1)
+    g = models.Game(name=n, box={}, logo={}, twitchid=312, viewers=1, channels=1)
     return g
 
 
@@ -17,12 +17,12 @@ def test_repr(game):
 
 
 def test_wrap_json(game1json):
-    g = twitch.Game.wrap_json(game1json)
+    g = models.Game.wrap_json(game1json)
     conftest.assert_game_equals_json(g, game1json)
 
 
 def test_wrap_search(games_search_response, game1json, game2json):
-    games = twitch.Game.wrap_search(games_search_response)
+    games = models.Game.wrap_search(games_search_response)
     for g, j  in zip(games, [game1json, game2json]):
         conftest.assert_game_equals_json(g, j)
 
@@ -32,7 +32,7 @@ def test_wrap_topgames(game1json, game2json):
                        {"game": game2json, "viewers": 543, "channels": 42}]}
     mockresponse = mock.Mock()
     mockresponse.json.return_value = topjson
-    games = twitch.Game.wrap_topgames(mockresponse)
+    games = models.Game.wrap_topgames(mockresponse)
     for g, j in zip(games, [game1json, game2json]):
         conftest.assert_game_equals_json(g, j)
     assert games[0].viewers == 123

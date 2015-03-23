@@ -2,14 +2,12 @@
 Usage
 ========
 
-To use pytwitcherapi in a project::
+The :mod:`pytwitcherapi.session` module centers around the
+:class:`pytwitcherapi.session.TwitchSession` class::
 
-  from pytwitcherapi import twitch
+  from pytwitcherapi import session
 
-The :mod:`pytwitcherapi.twitch` module centers around the
-:class:`pytwitcherapi.twitch.TwitchSession` class::
-
-  ts = twitch.TwitchSession()
+  ts = session.TwitchSession()
 
 To query all top games use::
 
@@ -24,33 +22,33 @@ Get streams and playlist for every game::
           playlist = ts.get_playlist(channel)
 
 As you can see games, channels, streams are wrapped into objects.
-See :class:`pytwitcherapi.twitch.Game`, :class:`pytwitcherapi.twitch.Channel`, :class:`pytwitcherapi.twitch.Stream`, :class:`pytwitcherapi.twitch.User`.
+See :class:`pytwitcherapi.models.Game`, :class:`pytwitcherapi.models.Channel`, :class:`pytwitcherapi.models.Stream`, :class:`pytwitcherapi.models.User`.
 
 
 ---------------
 Custom requests
 ---------------
 
-You can also issue custom requests. The :class:`pytwitcherapi.twitch.TwitchSession`
+You can also issue custom requests. The :class:`pytwitcherapi.session.TwitchSession`
 is actually a subclass of :class:`requests.Session`. So basically
-you can use :meth:`pytwitcherapi.twitch.TwitchSession.request` to issue
+you can use :meth:`pytwitcherapi.session.TwitchSession.request` to issue
 arbitrary requests.
 To make it easier to use the different twitch APIs there are a few helpers.
 
 You can get easy access to three different twitch APIs:
 
-  * `Kraken API <https://github.com/justintv/Twitch-API>`_ witch uses :data:`pytwitcherapi.twitch.TWITCH_KRAKENURL`.
-  * Usher API with uses :data:`pytwitcherapi.twitch.TWITCH_USHERURL`.
-  * The old twitch API :data:`pytwitcherapi.twitch.TWITCH_APIURL`.
+  * `Kraken API <https://github.com/justintv/Twitch-API>`_ witch uses :data:`pytwitcherapi.session.TWITCH_KRAKENURL`.
+  * Usher API with uses :data:`pytwitcherapi.session.TWITCH_USHERURL`.
+  * The old twitch API :data:`pytwitcherapi.session.TWITCH_APIURL`.
 
 There are three contextmangers to help accessing the api.
 When you use one of the contextmangers, it will set the baseurl and headers on the session. So you can ommit the baseurl from your request::
 
-  from pytwitcherapi import twitch
+  from pytwitcherapi import session
   
-  ts = twitch.TwitchSession()
+  ts = session.TwitchSession()
   # use kraken api
-  with twitch.kraken(ts):
+  with session.kraken(ts):
       # no need to use the baseurl or headers
       response = ts.get('games/top')
   # baseurl and headers are back to normal again

@@ -6,21 +6,21 @@ import pytest
 import requests
 import requests.utils
 
-from pytwitcherapi import twitch
+from pytwitcherapi import session, models
 from test import conftest
 
 
 @pytest.fixture(scope="function")
 def ts(mock_session):
-    """Return a :class:`twitch.TwitchSession`
+    """Return a :class:`session.TwitchSession`
     and mock the request of :class:`Session`
     """
-    return twitch.TwitchSession()
+    return session.TwitchSession()
 
 
 @pytest.fixture(scope="function")
 def tswithbase(ts):
-    """Return a :class:`twitch.TwitchSession` with
+    """Return a :class:`session.TwitchSession` with
     baseurl 'someurl' and {'test': 'test'} in the headers
     """
     ts.baseurl = 'someurl'
@@ -30,21 +30,21 @@ def tswithbase(ts):
 
 @pytest.fixture(scope="function")
 def mock_fetch_viewers(monkeypatch):
-    """Mock the fetch_viewers method of :class:`twitch.TwitchSession`"""
-    monkeypatch.setattr(twitch.TwitchSession, "fetch_viewers", mock.Mock())
+    """Mock the fetch_viewers method of :class:`session.TwitchSession`"""
+    monkeypatch.setattr(session.TwitchSession, "fetch_viewers", mock.Mock())
 
 
 @pytest.fixture(scope="function")
 def mock_session_get_viewers(monkeypatch):
-    """Mock :meth:`twitch.TwitchSession.get` to return the summary
+    """Mock :meth:`session.TwitchSession.get` to return the summary
     result for a game
     """
-    monkeypatch.setattr(twitch.TwitchSession, "get", mock.Mock())
+    monkeypatch.setattr(session.TwitchSession, "get", mock.Mock())
     mockjson = {"viewers": 124,
                 "channels": 12}
     mockresponse = mock.Mock()
     mockresponse.json.return_value = mockjson
-    twitch.TwitchSession.get.return_value = mockresponse
+    session.TwitchSession.get.return_value = mockresponse
 
 
 @pytest.fixture(scope='function')
@@ -75,14 +75,14 @@ audioonlylink"""
 
 @pytest.fixture(scope='function')
 def mock_get_channel_access_token(monkeypatch):
-    """Mock :meth:`twitch.TwitchSession.get_channel_access_token`"""
-    monkeypatch.setattr(twitch.TwitchSession, 'get_channel_access_token', mock.Mock())
+    """Mock :meth:`session.TwitchSession.get_channel_access_token`"""
+    monkeypatch.setattr(session.TwitchSession, 'get_channel_access_token', mock.Mock())
 
 
 @pytest.fixture(scope='function')
 def mock_get_playlist(monkeypatch):
-    """Mock :meth:`twitch.TwitchSession.get_playlist`"""
-    monkeypatch.setattr(twitch.TwitchSession, 'get_playlist', mock.Mock())
+    """Mock :meth:`session.TwitchSession.get_playlist`"""
+    monkeypatch.setattr(session.TwitchSession, 'get_playlist', mock.Mock())
 
 
 @contextlib.contextmanager
@@ -112,32 +112,32 @@ def test_request(ts, base, url, full, mock_session):
 
 def test_request_kraken(tswithbase, mock_session):
     url = "hallo"
-    with check_base_header(tswithbase), twitch.kraken(tswithbase):
+    with check_base_header(tswithbase), session.kraken(tswithbase):
         tswithbase.request("GET", url)
         # assert we are using the correct headers
         # assert default headers with 'Accept' have been used
         assert 'test' not in tswithbase.headers
-        assert tswithbase.headers['Accept'] == twitch.TWITCH_HEADER_ACCEPT
+        assert tswithbase.headers['Accept'] == session.TWITCH_HEADER_ACCEPT
     # assert the kraken url was used
-    requests.Session.request.assert_called_with("GET", twitch.TWITCH_KRAKENURL + url)
+    requests.Session.request.assert_called_with("GET", session.TWITCH_KRAKENURL + url)
 
 
 def test_request_oldapi(tswithbase, mock_session):
     url = "hallo"
-    with check_base_header(tswithbase), twitch.oldapi(tswithbase):
+    with check_base_header(tswithbase), session.oldapi(tswithbase):
         tswithbase.request("GET", url)
         assert tswithbase.headers == requests.utils.default_headers()
     # assert that the api url as baseurl was used
-    requests.Session.request.assert_called_with("GET", twitch.TWITCH_APIURL + url)
+    requests.Session.request.assert_called_with("GET", session.TWITCH_APIURL + url)
 
 
 def test_request_usher(tswithbase, mock_session):
     url = "hallo"
-    with check_base_header(tswithbase), twitch.usher(tswithbase):
+    with check_base_header(tswithbase), session.usher(tswithbase):
         tswithbase.request("GET", url)
         assert tswithbase.headers == requests.utils.default_headers()
     # assert that the usherurl as baseurl was used
-    requests.Session.request.assert_called_with("GET", twitch.TWITCH_USHERURL + url)
+    requests.Session.request.assert_called_with("GET", session.TWITCH_USHERURL + url)
 
 
 def test_raise_httperror(ts, mock_session_error_status):
@@ -158,7 +158,7 @@ def test_search_games(ts, games_search_response,
 
     #check if request was correct
     requests.Session.request.assert_called_with('GET',
-        twitch.TWITCH_KRAKENURL + 'search/games',
+        session.TWITCH_KRAKENURL + 'search/games',
         params={'query': 'test',
                 'type': 'suggest',
                 'live': True},
@@ -170,7 +170,7 @@ def test_search_games(ts, games_search_response,
 
 
 def test_fetch_viewers(ts, mock_session_get_viewers):
-    game = twitch.Game(name="Test", box={}, logo={}, twitchid=214)
+    game = models.Game(name="Test", box={}, logo={}, twitchid=214)
     game2 = ts.fetch_viewers(game)
     # assert that attributes have been set
     assert game.viewers == 124
@@ -195,7 +195,7 @@ def test_top_games(ts, game1json, game2json,
     assert games[1].channels == 95
     # assert the request was correct
     requests.Session.request.assert_called_with('GET',
-        twitch.TWITCH_KRAKENURL + 'games/top',
+        session.TWITCH_KRAKENURL + 'games/top',
         params={'limit': 10,
                 'offset': 0},
         allow_redirects=True)
@@ -214,7 +214,7 @@ def test_get_channel(ts, get_channel_response, channel1json):
 
     conftest.assert_channel_equals_json(channel, channel1json)
     requests.Session.request.assert_called_with('GET',
-        twitch.TWITCH_KRAKENURL + 'channels/'+ channel1json['name'],
+        session.TWITCH_KRAKENURL + 'channels/'+ channel1json['name'],
         allow_redirects=True)
 
 
@@ -231,7 +231,7 @@ def test_search_channels(ts, search_channels_response,
 
     # assert the request was correct
     requests.Session.request.assert_called_with('GET',
-        twitch.TWITCH_KRAKENURL + 'search/channels',
+        session.TWITCH_KRAKENURL + 'search/channels',
         params={'query': 'test',
                 'limit': 35,
                 'offset': 10},
@@ -241,7 +241,7 @@ def test_search_channels(ts, search_channels_response,
 def test_get_stream(ts, get_stream_response, stream1json):
     requests.Session.request.return_value = get_stream_response
     s1 = ts.get_stream(stream1json['channel']['name'])
-    s2 = ts.get_stream(twitch.Channel.wrap_json(stream1json['channel']))
+    s2 = ts.get_stream(models.Channel.wrap_json(stream1json['channel']))
 
     # check result
     for s in [s1, s2]:
@@ -249,7 +249,7 @@ def test_get_stream(ts, get_stream_response, stream1json):
 
     # assert the request was correct
     requests.Session.request.assert_called_with('GET',
-        twitch.TWITCH_KRAKENURL + 'streams/' +
+        session.TWITCH_KRAKENURL + 'streams/' +
         stream1json['channel']['name'],
         allow_redirects=True)
 
@@ -259,7 +259,7 @@ def test_get_streams(ts, search_streams_response, channel1,
     requests.Session.request.return_value = search_streams_response
     # check with different input types
     games = [game1json['name'],
-             twitch.Game.wrap_json(game1json)]
+             models.Game.wrap_json(game1json)]
     channels = [[channel1, 'asdf'], None]
     params = [{'game': game1json['name'],
               'channel': 'test_channel,asdf',
@@ -281,7 +281,7 @@ def test_get_streams(ts, search_streams_response, channel1,
 
         # assert the request was correct
         requests.Session.request.assert_called_with('GET',
-            twitch.TWITCH_KRAKENURL + 'streams',
+            session.TWITCH_KRAKENURL + 'streams',
             params=p,
             allow_redirects=True)
 
@@ -303,7 +303,7 @@ def test_search_streams(ts, search_streams_response,
        'limit': 25,
        'offset': 10}
     requests.Session.request.assert_called_with('GET',
-            twitch.TWITCH_KRAKENURL + 'search/streams',
+            session.TWITCH_KRAKENURL + 'search/streams',
             params=p,
             allow_redirects=True)
 
@@ -329,7 +329,7 @@ def test_get_channel_access_token(ts, channel1):
     for c in channels:
         token, sig = ts.get_channel_access_token(c)
         requests.Session.request.assert_called_with('GET',
-            twitch.TWITCH_APIURL + 'channels/%s/access_token' % channel1.name,
+            session.TWITCH_APIURL + 'channels/%s/access_token' % channel1.name,
             allow_redirects=True)
         assert token == mocktoken['token']
         assert sig == mocktoken['sig']
@@ -339,7 +339,7 @@ def test_get_playlist(ts, mock_get_channel_access_token,
                       channel1, playlist):
     token = 'sometoken'
     sig = 'somesig'
-    twitch.TwitchSession.get_channel_access_token.return_value = (token, sig)
+    session.TwitchSession.get_channel_access_token.return_value = (token, sig)
     mockresponse = mock.Mock()
     mockresponse.text = playlist
     requests.Session.request.return_value = mockresponse
@@ -356,10 +356,10 @@ def test_get_playlist(ts, mock_get_channel_access_token,
             assert pl.media[0].group_id == mi
         # assert the request was correct
         requests.Session.request.assert_called_with('GET',
-            twitch.TWITCH_USHERURL + 'channel/hls/test_channel.m3u8',
+            session.TWITCH_USHERURL + 'channel/hls/test_channel.m3u8',
             params=params, allow_redirects=True)
         # assert the mocked get_channel_access_token was called correctly
-        twitch.TwitchSession.get_channel_access_token.assert_called_with('test_channel')
+        session.TwitchSession.get_channel_access_token.assert_called_with('test_channel')
 
 
 def test_get_quality_options(ts, mock_get_playlist, playlist, channel1):
