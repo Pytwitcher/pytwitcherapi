@@ -1,3 +1,6 @@
+"""Contains classes that wrap the jsons returned by the twitch.tv API"""
+
+
 class Game(object):
     """Game on twitch.tv
     """
