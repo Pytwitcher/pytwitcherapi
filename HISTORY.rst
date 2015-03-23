@@ -14,3 +14,7 @@ History
 
 * Fix wrapping search stream results due to incomplete channel json
 
+0.1.3 (2015-03-23)
++++++++++++++++++++++++++++++++++++++++
+
+* Refactor twitch module into models and session module
