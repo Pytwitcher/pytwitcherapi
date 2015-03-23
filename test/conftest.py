@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import twitch
+from pytwitcherapi import models
 
 
 @pytest.fixture(scope="function")
@@ -75,7 +75,7 @@ def assert_game_equals_json(game, json):
     """Assert that the given game resembles the given json
 
     :param game: The game instance
-    :type game: :class:`twitch.Game`
+    :type game: :class:`models.Game`
     :param json: the json representation
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
@@ -138,18 +138,18 @@ def channel2json():
 def channel1(channel1json):
     """Return a Channel instance for channel1json
 
-    :rtype: :class:`twitch.Channel`
+    :rtype: :class:`models.Channel`
     """
-    return twitch.Channel.wrap_json(channel1json)
+    return models.Channel.wrap_json(channel1json)
 
 
 @pytest.fixture(scope="function")
 def channel2(channel2json):
     """Return a Channel instance for channel2json
 
-    :rtype: :class:`twitch.Channel`
+    :rtype: :class:`models.Channel`
     """
-    return twitch.Channel.wrap_json(channel2json)
+    return models.Channel.wrap_json(channel2json)
 
 
 @pytest.fixture(scope="function")
@@ -174,13 +174,11 @@ def get_channel_response(channel1json):
     return mockresponse
 
 
-
-
 def assert_channel_equals_json(channel, json):
     """Assert that the given channel resembles the given json
 
     :param channel: The channel instance
-    :type channel: :class:`twitch.Channel`
+    :type channel: :class:`models.Channel`
     :param json: the json representation
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
@@ -275,7 +273,7 @@ def assert_stream_equals_json(stream, json):
     """Assert that the given stream resembles the given json
 
     :param stream: The stream instance
-    :type stream: :class:`twitch.Stream`
+    :type stream: :class:`models.Stream`
     :param json: the json representation
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
@@ -316,7 +314,7 @@ def assert_user_equals_json(user, json):
     """Assert that the given user resembles the given json
 
     :param user: The user instance
-    :type user: :class:`twitch.User`
+    :type user: :class:`models.User`
     :param json: the json representation
     :type json: :class:`dict`
     :raises: :class:`AssertionError`
