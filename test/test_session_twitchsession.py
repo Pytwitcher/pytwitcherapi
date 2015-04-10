@@ -122,6 +122,15 @@ def test_request_kraken(tswithbase, mock_session):
     requests.Session.request.assert_called_with("GET", session.TWITCH_KRAKENURL + url)
 
 
+def test_request_default(tswithbase, mock_session):
+    url = "hallo"
+    with check_base_header(tswithbase), session.default(tswithbase):
+        tswithbase.request("GET", url)
+        assert tswithbase.headers == requests.utils.default_headers()
+    # assert that the no baseurl was used
+    requests.Session.request.assert_called_with("GET", url)
+
+
 def test_request_oldapi(tswithbase, mock_session):
     url = "hallo"
     with check_base_header(tswithbase), session.oldapi(tswithbase):
