@@ -22,6 +22,10 @@ TWITCH_APIURL = 'http://api.twitch.tv/api/'
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
 
+REDIRECT_URI = 'http://localhost'
+"""The redirect url of pytwitcher. We do not need to redirect anywhere so localhost is set
+in the twitch prefrences of pytwitcher"""
+
 
 @contextlib.contextmanager
 def _restore_old_context(session):
@@ -405,3 +409,14 @@ class TwitchSession(requests.Session):
         with oldapi(self):
             r = self.get('channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
+
+    def get_oauth_token(self, scopes):
+        """Get an oauth token for the given scopes
+
+        :param scopes:
+        :type scopes:
+        :returns: The oauth token
+        :rtype: :class:`str`
+        :raises: None
+        """
+        pass
