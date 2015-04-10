@@ -409,14 +409,3 @@ class TwitchSession(requests.Session):
         with oldapi(self):
             r = self.get('channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
-
-    def get_oauth_token(self, scopes):
-        """Get an oauth token for the given scopes
-
-        :param scopes:
-        :type scopes:
-        :returns: The oauth token
-        :rtype: :class:`str`
-        :raises: None
-        """
-        pass
