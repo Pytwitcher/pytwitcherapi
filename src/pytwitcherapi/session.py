@@ -24,6 +24,34 @@ CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 
 
 @contextlib.contextmanager
+def _restore_old_context(session):
+    oldheaders = session.headers
+    oldbaseurl = session.baseurl
+    try:
+        yield
+    finally:
+        session.headers = oldheaders
+        session.baseurl = oldbaseurl
+
+
+@contextlib.contextmanager
+def default(session):
+    """Contextmanager for a :class:`TwitchSession` make sure, you are using no baseurl
+    and the default headers.
+
+    :param session: the session to make use the Kraken API
+    :type session: :class:`TwitchSession`
+    :returns: None
+    :rtype: None
+    :raises: None
+    """
+    with _restore_old_context(session):
+        session.headers = requests.utils.default_headers()
+        session.baseurl = ""
+        yield
+
+
+@contextlib.contextmanager
 def kraken(session):
     """Contextmanager for a :class:`TwitchSession` to make
     shorter requests to the Kraken API.
@@ -37,16 +65,11 @@ def kraken(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.headers['Accept'] = TWITCH_HEADER_ACCEPT
         session.baseurl = TWITCH_KRAKENURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
 @contextlib.contextmanager
@@ -63,15 +86,10 @@ def usher(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_USHERURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
 @contextlib.contextmanager
@@ -88,15 +106,10 @@ def oldapi(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_APIURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
 class TwitchSession(requests.Session):
