@@ -36,7 +36,7 @@ class Tox(TestCommand):
 
 
 long_description = read('README.rst', 'HISTORY.rst')
-install_requires = ['requests', 'm3u8', 'urllib3', 'pyopenssl', 'ndg-httpsclient', 'pyasn1']
+install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'urllib3', 'pyopenssl', 'ndg-httpsclient', 'pyasn1']
 tests_require = ['tox']
 
 
@@ -50,6 +50,7 @@ setup(
     url='https://github.com/Pytwitcher/pytwitcherapi',
     packages=find_packages('src'),
     package_dir={'': 'src'},
+    package_data={'pytwitcherapi': ['html/*.html', 'ssl/*.pem']},
     include_package_data=True,
     tests_require=tests_require,
     install_requires=install_requires,

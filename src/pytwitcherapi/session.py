@@ -1,11 +1,14 @@
 """API for communicating with twitch"""
 import contextlib
+import threading
 
 import m3u8
+import oauthlib.oauth2
 import requests
 import requests.utils
+import requests_oauthlib
 
-from pytwitcherapi import models
+from pytwitcherapi import models, oauth
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
 """The baseurl for the twitch api"""
@@ -22,9 +25,8 @@ TWITCH_APIURL = 'http://api.twitch.tv/api/'
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
 
-REDIRECT_URI = 'http://localhost'
-"""The redirect url of pytwitcher. We do not need to redirect anywhere so localhost is set
-in the twitch prefrences of pytwitcher"""
+REDIRECT_URI = 'http://localhost:42420'
+"""The redirect url of pytwitcher. We do not need to redirect anywhere so localhost is set in the twitch prefrences of pytwitcher"""
 
 
 @contextlib.contextmanager
@@ -116,7 +118,7 @@ def oldapi(session):
         yield
 
 
-class TwitchSession(requests.Session):
+class TwitchSession(requests_oauthlib.OAuth2Session):
     """Session that stores a baseurl that will be prepended for every request
 
     You can use the contextmanagers :func:`kraken`, :func:`usher` and
@@ -129,9 +131,14 @@ class TwitchSession(requests.Session):
 
         :raises: None
         """
-        super(TwitchSession, self).__init__()
+        client = oauthlib.oauth2.MobileApplicationClient(client_id=CLIENT_ID)
+        super(TwitchSession, self).__init__(client_id=CLIENT_ID, client=client)
         self.baseurl = ''
         """The baseurl that gets prepended to every request url"""
+        self.login_server = None
+        """The server that handles the login redirect"""
+        self.login_thread = None
+        """The thread that serves the login server"""
 
     def request(self, method, url, **kwargs):
         """Constructs a :class:`requests.Request`, prepares it and sends it.
@@ -147,7 +154,11 @@ class TwitchSession(requests.Session):
         :raises: :class:`requests.HTTPError`
         """
         fullurl = self.baseurl + url if self.baseurl else url
-        r = super(TwitchSession, self).request(method, fullurl, **kwargs)
+        if oauthlib.oauth2.is_secure_transport(fullurl):
+            m = super(TwitchSession, self).request
+        else:
+            m = super(requests_oauthlib.OAuth2Session, self).request
+        r = m(method, fullurl, **kwargs)
         r.raise_for_status()
         return r
 
@@ -409,3 +420,35 @@ class TwitchSession(requests.Session):
         with oldapi(self):
             r = self.get('channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
+
+    def start_login_server(self, ):
+        """Start a server that will get a request from a user logging in.
+
+        This uses the Implicit Grant Flow of OAuth2. The user is asked
+        to login to twitch and grant PyTwitcher authorization.
+        Once the user agrees, he is redirected to an url.
+        This server will respond to that url and get the oauth token.
+
+        The server serves in another thread. To shut him down, call
+        :meth:`TwitchSession.shutdown_login_server`.
+
+        This sets the :data:`TwitchSession.login_server`,
+        :data:`TwitchSession.login_thread` variables.
+
+        :returns: The created server
+        :rtype: :class:`BaseHTTPServer.HTTPServer`
+        :raises: None
+        """
+        self.login_server = oauth.LoginServer(session=self)
+        self.login_thread = threading.Thread(target=self.login_server.serve_forever)
+        self.login_thread.start()
+
+    def shutdown_login_server(self, ):
+        """Shutdown the login server and thread
+
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self.login_server.shutdown()
+        self.login_thread.join()
