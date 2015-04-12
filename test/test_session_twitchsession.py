@@ -9,8 +9,19 @@ import requests
 import requests.utils
 
 import pytwitcherapi
-from pytwitcherapi import session, models
+from pytwitcherapi import session, models, exceptions
 from test import conftest
+
+
+@pytest.fixture(scope='module')
+def auth_redirect_uri():
+    ruri = pytwitcherapi.REDIRECT_URI + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=user_read'
+    return ruri
+
+
+@pytest.fixture(scope='function')
+def auth_headers():
+    return {'Authorization': 'OAuth u7amjlndoes3xupi4bb1jrzg2wrcm1'}
 
 
 @pytest.fixture(scope="function")
@@ -19,6 +30,13 @@ def ts(mock_session):
     and mock the request of :class:`Session`
     """
     return session.TwitchSession()
+
+
+@pytest.fixture(scope='function')
+def authts(ts, auth_redirect_uri):
+    uri =  auth_redirect_uri.replace('http://', 'https://')
+    ts.token_from_fragment(uri)
+    return ts
 
 
 @pytest.fixture(scope="function")
@@ -330,6 +348,22 @@ def test_get_user(ts, get_user_response,
     conftest.assert_user_equals_json(user, user1json)
 
 
+@pytest.mark.parametrize('sessionfixture',
+                         ['authts',
+                          pytest.mark.xfail(raises=exceptions.NotAuthorizedError)('ts')])
+def test_fetch_login_user(request, sessionfixture, get_user_response,
+                          user1json, auth_headers):
+    ts = request.getfuncargvalue(sessionfixture)
+    requests.Session.request.return_value = get_user_response
+    user = ts.fetch_login_user()
+    conftest.assert_user_equals_json(user, user1json)
+    assert user == ts.current_user
+    requests.Session.request.assert_called_with('GET',
+        session.TWITCH_KRAKENURL + 'user',
+        allow_redirects=True,
+        headers=auth_headers, data=None)
+
+
 def test_get_channel_access_token(ts, channel1):
     # test with different input types
     channels = [channel1.name, channel1]
@@ -405,12 +439,12 @@ def login_server(request):
     return ts
 
 
-def test_login(login_server):
+def test_login(login_server, auth_redirect_uri):
     ruri = pytwitcherapi.REDIRECT_URI
     ts = login_server
     with pytest.raises(requests.HTTPError):
         ts.get(ruri + '/failingurl')
-    r = ts.get(ruri + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+    r = ts.get(auth_redirect_uri)
     assert_html_response(r, 'extract_token_site.html')
     r = ts.get(ruri + '/success')
     assert_html_response(r, 'success_site.html')

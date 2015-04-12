@@ -157,6 +157,9 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """The server that handles the login redirect"""
         self.login_thread = None
         """The thread that serves the login server"""
+        self.current_user = None
+        """The currently logined user.
+        Use :meth:`TwitchSession.fetch_login_user` to set."""
 
     def request(self, method, url, **kwargs):
         """Constructs a :class:`requests.Request`, prepares it and sends it.
@@ -371,6 +374,20 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         with kraken(self):
             r = self.get('user/' + name)
         return models.User.wrap_get_user(r)
+
+    def fetch_login_user(self, ):
+        """Set and return the currently logined user
+
+        Sets :data:`TwitchSession.current_user`
+
+        :returns: The user instance
+        :rtype: :class:`models.User`
+        :raises: None
+        """
+        with kraken(self):
+            r = self.get('user')
+        self.current_user = models.User.wrap_get_user(r)
+        return self.current_user
 
     def get_playlist(self, channel):
         """Return the playlist for the given channel
