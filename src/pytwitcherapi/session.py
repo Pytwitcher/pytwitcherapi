@@ -383,6 +383,26 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
                                  'offset': offset})
         return models.Stream.wrap_search(r)
 
+    @needs_auth
+    def followed_streams(self, limit=25, offset=0):
+        """Return the streams the current user follows.
+
+        Needs authorization ``user_read``.
+
+        :param limit: maximum number of results
+        :type limit: :class:`int`
+        :param offset: offset for pagination
+        :type offset::class:`int`
+        :returns: A list of streams
+        :rtype: :class:`list`of :class:`models.Stream` instances
+        :raises: None
+        """
+        with kraken(self):
+            r = self.get('streams/followed',
+                         params={'limit': limit,
+                                 'offset': offset})
+        return models.Stream.wrap_search(r)
+
     def get_user(self, name):
         """Get the user for the given name
 
