@@ -60,7 +60,7 @@ setup(
     keywords='pytwitcherapi',
     test_suite='pytwitcherapi.test.pytwitcherapi',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Beta',
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
