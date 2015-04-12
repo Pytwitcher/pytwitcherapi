@@ -42,7 +42,7 @@ tests_require = ['tox']
 
 setup(
     name='pytwitcherapi',
-    version='0.1.4',
+    version='0.2.0',
     description='Python API for interacting with twitch.tv',
     long_description=long_description,
     author='David Zuber',
@@ -50,7 +50,7 @@ setup(
     url='https://github.com/Pytwitcher/pytwitcherapi',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'pytwitcherapi': ['html/*.html', 'ssl/*.*']},
+    package_data={'pytwitcherapi': ['html/*.html']},
     include_package_data=True,
     tests_require=tests_require,
     install_requires=install_requires,
@@ -60,7 +60,7 @@ setup(
     keywords='pytwitcherapi',
     test_suite='pytwitcherapi.test.pytwitcherapi',
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Beta',
         'Intended Audience :: End Users/Desktop',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
