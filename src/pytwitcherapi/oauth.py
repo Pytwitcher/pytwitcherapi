@@ -136,11 +136,7 @@ class LoginServer(server.HTTPServer):
         :rtype: None
         :raises: None
         """
-        ctx = SSL.Context(SSL.SSLv23_METHOD)
-        #ctx = ssl.create_default_context()
-        #ctx.wrap_socket(self.socket, server_side=True)
-        #pemdatapath = os.path.join('ssl', 'cacert.pem')
-        #pemfile = pkg_resources.resource_filename('pytwitcherapi', pemdatapath)
+        ctx = SSL.Context(SSL.TLSv1_METHOD)
         kdatapath = os.path.join('ssl', 'server.key')
         kfile = pkg_resources.resource_filename('pytwitcherapi', kdatapath)
         cadatapath = os.path.join('ssl', 'server.crt')

@@ -405,14 +405,15 @@ def login_server(request):
 
 
 def test_login(login_server):
-    pemdatapath = os.path.join('ssl', 'server.pem')
-    pemfile = pkg_resources.resource_filename('pytwitcherapi', pemdatapath)
+    cadatapath = os.path.join('ssl', 'server.crt')
+    cafile = pkg_resources.resource_filename('pytwitcherapi', cadatapath)
     ts = login_server
     with pytest.raises(requests.HTTPError):
-        ts.get('https://localhost:42420/failingurl', verify=pemfile)
+        ts.get('https://localhost:42420/failingurl', verify=cafile)
     r = ts.get('https://localhost:42420/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
     assert_html_response(r, 'extract_token_site.html')
     r = ts.get('https://localhost:42420/success')
     assert_html_response(r, 'success_site.html')
     ts.post('https://localhost:42420/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
-    assert ts.token
+    assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
+                       'scope': ['channel_read']}
