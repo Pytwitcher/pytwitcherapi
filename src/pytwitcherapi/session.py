@@ -1,5 +1,6 @@
 """API for communicating with twitch"""
 import contextlib
+import functools
 import threading
 
 import m3u8
@@ -9,7 +10,8 @@ import requests.utils
 import requests_oauthlib
 
 import pytwitcherapi
-from pytwitcherapi import models, oauth
+from pytwitcherapi import models, oauth, exceptions
+
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
 """The baseurl for the twitch api"""
@@ -120,6 +122,25 @@ def oldapi(session):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_APIURL
         yield
+
+
+def needs_auth(meth):
+    """Wraps a method of :class:`TwitchSession` and
+    raises an :class:`exceptions.NotAuthorizedError`
+    if before calling the method, the session isn't authorized.
+
+    :param meth:
+    :type meth:
+    :returns: the wrapped method
+    :rtype: Method
+    :raises: None
+    """
+    @functools.wraps(meth)
+    def wrapped(*args, **kwargs):
+        if not args[0].authorized:
+            raise exceptions.NotAuthorizedError('Please login first!')
+        return meth(*args, **kwargs)
+    return wrapped
 
 
 class TwitchSession(requests_oauthlib.OAuth2Session):
@@ -375,6 +396,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
             r = self.get('user/' + name)
         return models.User.wrap_get_user(r)
 
+    @needs_auth
     def fetch_login_user(self, ):
         """Set and return the currently logined user
 

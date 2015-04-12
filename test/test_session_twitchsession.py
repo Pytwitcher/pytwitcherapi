@@ -179,6 +179,21 @@ def test_raise_httperror(ts, mock_session_error_status):
         ts.request("GET", "test")
 
 
+@pytest.mark.parametrize('sessionfixture',
+    ['authts',
+    pytest.mark.xfail(raises=exceptions.NotAuthorizedError)('ts')])
+def test_needs_auth(sessionfixture, request):
+    ts = request.getfuncargvalue(sessionfixture)
+
+    @session.needs_auth
+    def authorized_request(session, *args, **kwargs):
+        return args, kwargs
+
+    r = authorized_request(ts, 1, kwarg=2)
+    # assert return is correct
+    assert r == ((1,), {'kwarg': 2}), "Returnvalue incorrect"
+
+
 def test_search_games(ts, games_search_response,
                       game1json, game2json, mock_fetch_viewers):
     requests.Session.request.return_value = games_search_response
