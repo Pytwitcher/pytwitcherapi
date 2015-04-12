@@ -8,6 +8,7 @@ import pytest
 import requests
 import requests.utils
 
+import pytwitcherapi
 from pytwitcherapi import session, models
 from test import conftest
 
@@ -405,15 +406,19 @@ def login_server(request):
 
 
 def test_login(login_server):
-    cadatapath = os.path.join('ssl', 'server.crt')
-    cafile = pkg_resources.resource_filename('pytwitcherapi', cadatapath)
+    ruri = pytwitcherapi.REDIRECT_URI
     ts = login_server
     with pytest.raises(requests.HTTPError):
-        ts.get('https://localhost:42420/failingurl', verify=cafile)
-    r = ts.get('https://localhost:42420/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+        ts.get(ruri + '/failingurl')
+    r = ts.get(ruri + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
     assert_html_response(r, 'extract_token_site.html')
-    r = ts.get('https://localhost:42420/success')
+    r = ts.get(ruri + '/success')
     assert_html_response(r, 'success_site.html')
-    ts.post('https://localhost:42420/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+    ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
     assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
                        'scope': ['channel_read']}
+
+def test_get_authurl(ts):
+    ts.state = 'a'
+    url = ts.get_auth_url()
+    assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb&redirect_uri=http%3A%2F%2Flocalhost%3A42420&scope=user_read&state=a'

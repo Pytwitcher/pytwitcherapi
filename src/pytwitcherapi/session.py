@@ -8,6 +8,7 @@ import requests
 import requests.utils
 import requests_oauthlib
 
+import pytwitcherapi
 from pytwitcherapi import models, oauth
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
@@ -22,11 +23,14 @@ TWITCH_USHERURL = 'http://usher.twitch.tv/api/'
 TWITCH_APIURL = 'http://api.twitch.tv/api/'
 """The baseurl for the old twitch api"""
 
+AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
+"""Authorisation Endpoint"""
+
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
 
-REDIRECT_URI = 'http://localhost:42420'
-"""The redirect url of pytwitcher. We do not need to redirect anywhere so localhost is set in the twitch prefrences of pytwitcher"""
+SCOPES = ['user_read']
+"""The scopes that PyTwitcher needs"""
 
 
 @contextlib.contextmanager
@@ -124,6 +128,17 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
     You can use the contextmanagers :func:`kraken`, :func:`usher` and
     :func:`oldapi` to easily use the different APIs.
     They will set the baseurl and headers.
+
+    To get authorization, the user has to grant PyTwitcher access.
+    The workflow goes like this:
+
+      1. Start the login server with :meth:`TwitchSession.start_login_server`.
+      2. User should visit :meth:`TwitchSession.get_auth_url` in his
+         browser and follow insturctions (e.g Login and Allow PyTwitcher).
+      3. Check if the session is authorized with :meth:`TwitchSession.authorized`.
+      4. Shut the login server down with :meth:`TwitchSession.shutdown_login_server`.
+
+    Now you can use methods that need authorization.
     """
 
     def __init__(self):
@@ -132,7 +147,10 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :raises: None
         """
         client = oauthlib.oauth2.MobileApplicationClient(client_id=CLIENT_ID)
-        super(TwitchSession, self).__init__(client_id=CLIENT_ID, client=client)
+        super(TwitchSession, self).__init__(client_id=CLIENT_ID,
+                                            client=client,
+                                            scope=SCOPES,
+                                            redirect_uri=pytwitcherapi.REDIRECT_URI)
         self.baseurl = ''
         """The baseurl that gets prepended to every request url"""
         self.login_server = None
@@ -452,3 +470,12 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         self.login_server.shutdown()
         self.login_thread.join()
+
+    def get_auth_url(self, ):
+        """Return the url for the user to authorize PyTwitcher
+
+        :returns: The url the user should visit to authorize PyTwitcher
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return self.authorization_url(AUTHORIZATION_BASE_URL)[0]

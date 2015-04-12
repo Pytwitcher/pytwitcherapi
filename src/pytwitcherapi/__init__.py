@@ -3,7 +3,5 @@ __email__ = 'zuber.david@gmx.de'
 __version__ = '0.1.4'
 
 
-# this will get rid of some insecure platform warnings
-# and enable SNI-support
-import urllib3.contrib.pyopenssl
-urllib3.contrib.pyopenssl.inject_into_urllib3()
+REDIRECT_URI = 'http://localhost:42420'
+"""The redirect url of pytwitcher. We do not need to redirect anywhere so localhost is set in the twitch prefrences of pytwitcher"""

@@ -2,19 +2,20 @@
 We use the Implicit Grant Workflow.
 The user has to visit an authorization site, login, authorize
 PyTwitcher. Once he allows PyTwitcher, twitch will redirect him to
-:data:`pytwitcherapi.session.REDIRECT_URI`.
+:data:`pytwitcherapi.REDIRECT_URI`.
 In the url fragment, there is the access token.
 
 This module features a server, that will respond to the redirection of
-the user, extract the access token and give the user a response,
+the user. So if twitch is redirecting to :data:`pytwitcherapi.REDIRECT_URI`,
+the server is gonna send a website, which will extract the access token,
+send it as a post request and give the user a response,
 that everything worked.
 """
 import os
 import pkg_resources
 import socket
-import ssl
 
-from OpenSSL import SSL
+import pytwitcherapi
 
 try:
     from http import server
@@ -32,15 +33,6 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
 
     extract_site_url = '/'
     success_site_url = '/success'
-
-    def setup(self):
-        """Setup the handler
-
-        This needs to be done for ssl to work
-        """
-        self.connection = self.request
-        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
-        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
 
     def _set_headers(self):
         """Set the response and headers
@@ -102,7 +94,13 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
         """
         self._set_headers()
         # convert the parameters back to the original fragment
-        self.server.set_token('https://localhost:42420' + self.path.replace('?', '#'))
+        # because we need to send the original uri to set_token
+        # url fragments will not show up in self.path though.
+        # thats why we make the hassle to send it as a post request.
+        # Note: oauth does not allow for http connections
+        # but twitch does, so we fake it
+        ruri = pytwitcherapi.REDIRECT_URI.replace('http://', 'https://')
+        self.server.set_token(ruri + self.path.replace('?', '#'))
 
 
 class LoginServer(server.HTTPServer):
@@ -120,33 +118,8 @@ class LoginServer(server.HTTPServer):
         :raises: None
         """
         server.HTTPServer.__init__(self, LOGIN_SERVER_ADRESS, RedirectHandler)
-        self.setup_ssl()
-        self.tokenurl = None
-        """The full tokenurl, which contains the access token in the url fragment.
-        Is None until the server handled the requests."""
         self.session = session
         """The session that needs a token"""
-
-    def setup_ssl(self, ):
-        """Setup ssl
-
-        Credits to: http://code.activestate.com/recipes/442473-simple-http-server-supporting-ssl-secure-communica/
-
-        :returns: None
-        :rtype: None
-        :raises: None
-        """
-        ctx = SSL.Context(SSL.TLSv1_METHOD)
-        kdatapath = os.path.join('ssl', 'server.key')
-        kfile = pkg_resources.resource_filename('pytwitcherapi', kdatapath)
-        cadatapath = os.path.join('ssl', 'server.crt')
-        cafile = pkg_resources.resource_filename('pytwitcherapi', cadatapath)
-        ctx.use_privatekey_file (kfile)
-        ctx.use_certificate_file(cafile)
-        self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
-                                                        self.socket_type))
-        self.server_bind()
-        self.server_activate()
 
     def set_token(self, redirecturl):
         """Set the token on the session
@@ -158,6 +131,3 @@ class LoginServer(server.HTTPServer):
         :raises: None
         """
         self.session.token_from_fragment(redirecturl)
-
-    def shutdown_request(self,request):
-        request.shutdown()
