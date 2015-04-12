@@ -1,4 +1,6 @@
 import contextlib
+import os
+import pkg_resources
 
 import m3u8
 import mock
@@ -6,6 +8,7 @@ import pytest
 import requests
 import requests.utils
 
+import pytwitcherapi
 from pytwitcherapi import session, models
 from test import conftest
 
@@ -119,7 +122,9 @@ def test_request_kraken(tswithbase, mock_session):
         assert 'test' not in tswithbase.headers
         assert tswithbase.headers['Accept'] == session.TWITCH_HEADER_ACCEPT
     # assert the kraken url was used
-    requests.Session.request.assert_called_with("GET", session.TWITCH_KRAKENURL + url)
+    requests.Session.request.assert_called_with("GET",
+                                                session.TWITCH_KRAKENURL + url,
+                                                headers=None, data=None)
 
 
 def test_request_default(tswithbase, mock_session):
@@ -171,7 +176,7 @@ def test_search_games(ts, games_search_response,
         params={'query': 'test',
                 'type': 'suggest',
                 'live': True},
-        allow_redirects=True)
+        allow_redirects=True, headers=None, data=None)
 
     # check if mocked fetch viewers was called correctly
     ts.fetch_viewers.assert_has_calls([mock.call(g) for g in games],
@@ -207,7 +212,7 @@ def test_top_games(ts, game1json, game2json,
         session.TWITCH_KRAKENURL + 'games/top',
         params={'limit': 10,
                 'offset': 0},
-        allow_redirects=True)
+        allow_redirects=True, headers=None, data=None)
 
 
 def test_get_game(ts, mock_fetch_viewers,
@@ -224,7 +229,7 @@ def test_get_channel(ts, get_channel_response, channel1json):
     conftest.assert_channel_equals_json(channel, channel1json)
     requests.Session.request.assert_called_with('GET',
         session.TWITCH_KRAKENURL + 'channels/'+ channel1json['name'],
-        allow_redirects=True)
+        allow_redirects=True, headers=None, data=None)
 
 
 def test_search_channels(ts, search_channels_response,
@@ -244,7 +249,7 @@ def test_search_channels(ts, search_channels_response,
         params={'query': 'test',
                 'limit': 35,
                 'offset': 10},
-        allow_redirects=True)
+        allow_redirects=True, headers=None, data=None)
 
 
 def test_get_stream(ts, get_stream_response, stream1json):
@@ -260,7 +265,7 @@ def test_get_stream(ts, get_stream_response, stream1json):
     requests.Session.request.assert_called_with('GET',
         session.TWITCH_KRAKENURL + 'streams/' +
         stream1json['channel']['name'],
-        allow_redirects=True)
+        allow_redirects=True, headers=None, data=None)
 
 
 def test_get_streams(ts, search_streams_response, channel1,
@@ -292,7 +297,7 @@ def test_get_streams(ts, search_streams_response, channel1,
         requests.Session.request.assert_called_with('GET',
             session.TWITCH_KRAKENURL + 'streams',
             params=p,
-            allow_redirects=True)
+            allow_redirects=True, headers=None, data=None)
 
 
 def test_search_streams(ts, search_streams_response,
@@ -314,7 +319,7 @@ def test_search_streams(ts, search_streams_response,
     requests.Session.request.assert_called_with('GET',
             session.TWITCH_KRAKENURL + 'search/streams',
             params=p,
-            allow_redirects=True)
+            allow_redirects=True, headers=None, data=None)
 
 
 def test_get_user(ts, get_user_response,
@@ -379,3 +384,41 @@ def test_get_quality_options(ts, mock_get_playlist, playlist, channel1):
         options = ts.get_quality_options(c)
         assert options == ['source', 'high', 'medium', 'low', 'mobile', 'audio']
         ts.get_playlist.assert_called_with(c)
+
+
+def assert_html_response(r, filename):
+    datapath = os.path.join('html', filename)
+    sitepath = pkg_resources.resource_filename('pytwitcherapi', datapath)
+    with open(sitepath, 'r') as f:
+        html = f.read()
+    assert r.content == html
+
+
+@pytest.fixture(scope='function')
+def login_server(request):
+    ts = session.TwitchSession()
+
+    def shutdown():
+        ts.shutdown_login_server()
+    request.addfinalizer(shutdown)
+    ts.start_login_server()
+    return ts
+
+
+def test_login(login_server):
+    ruri = pytwitcherapi.REDIRECT_URI
+    ts = login_server
+    with pytest.raises(requests.HTTPError):
+        ts.get(ruri + '/failingurl')
+    r = ts.get(ruri + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+    assert_html_response(r, 'extract_token_site.html')
+    r = ts.get(ruri + '/success')
+    assert_html_response(r, 'success_site.html')
+    ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+    assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
+                       'scope': ['channel_read']}
+
+def test_get_authurl(ts):
+    ts.state = 'a'
+    url = ts.get_auth_url()
+    assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb&redirect_uri=http%3A%2F%2Flocalhost%3A42420&scope=user_read&state=a'
