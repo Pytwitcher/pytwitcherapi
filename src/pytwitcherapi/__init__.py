@@ -1,6 +1,6 @@
 __author__ = 'David Zuber'
 __email__ = 'zuber.david@gmx.de'
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 REDIRECT_URI = 'http://localhost:42420'
