@@ -14,6 +14,8 @@ that everything worked.
 import os
 import pkg_resources
 
+import oauthlib.oauth2
+
 import pytwitcherapi
 
 try:
@@ -130,3 +132,30 @@ class LoginServer(server.HTTPServer):
         :raises: None
         """
         self.session.token_from_fragment(redirecturl)
+
+
+class TwitchOAuthClient(oauthlib.oauth2.MobileApplicationClient):
+    """This is a client needed for :class:`oauthlib.oauth2.OAuth2Session`.
+    It fixes the Authorization header for twitch.
+
+    Usually the Authorization Header looks like this::
+
+        {'Authorization': 'Bearer <<token>>'}
+
+    But Twitch needs it to be like this::
+
+        {'Authorization': 'OAuth <<token>>'}
+
+    So we override :meth:`TwitchOAuthClient._add_bearer_token` to fix the header.
+    """
+
+    def _add_bearer_token(self, *args, **kwargs):
+        """Add a bearer token to the request uri, body or authorization header.
+
+        This is overwritten to change the headers slightly.
+        """
+        uri, headers, body = super(TwitchOAuthClient, self)._add_bearer_token(*args, **kwargs)
+        authheader = headers.get('Authorization')
+        if authheader:
+            headers['Authorization'] = authheader.replace('Bearer', 'OAuth')
+        return uri, headers, body

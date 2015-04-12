@@ -167,7 +167,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
 
         :raises: None
         """
-        client = oauthlib.oauth2.MobileApplicationClient(client_id=CLIENT_ID)
+        client = oauth.TwitchOAuthClient(client_id=CLIENT_ID)
         super(TwitchSession, self).__init__(client_id=CLIENT_ID,
                                             client=client,
                                             scope=SCOPES,
