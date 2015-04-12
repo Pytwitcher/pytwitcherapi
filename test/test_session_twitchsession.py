@@ -200,6 +200,7 @@ def test_search_games(ts, games_search_response,
     games = ts.search_games(query='test', live=True)
 
     # check result
+    assert len(games) == 2
     for g, j  in zip(games, [game1json, game2json]):
         conftest.assert_game_equals_json(g, j)
 
@@ -233,6 +234,7 @@ def test_top_games(ts, game1json, game2json,
     requests.Session.request.return_value = top_games_response
     games = ts.top_games(limit=10, offset=0)
     # check result
+    assert len(games) == 2
     for g, j in zip(games, [game1json, game2json]):
         conftest.assert_game_equals_json(g, j)
     # assert the viewers and channels from the response were already set
@@ -273,6 +275,7 @@ def test_search_channels(ts, search_channels_response,
                                   offset=10)
 
     # check result
+    assert len(channels) == 2
     for c, j in zip(channels, [channel1json, channel2json]):
         conftest.assert_channel_equals_json(c, j)
 
@@ -323,6 +326,7 @@ def test_get_streams(ts, search_streams_response, channel1,
                                  offset=10)
 
         # check the result
+        assert len(streams) == 2
         for s, j in zip(streams, [stream1json, stream2json]):
             conftest.assert_stream_equals_json(s, j)
 
@@ -342,6 +346,7 @@ def test_search_streams(ts, search_streams_response,
                                 offset=10)
 
     # check the result
+    assert len(streams) == 2
     for s, j in zip(streams, [stream1json, stream2json]):
         conftest.assert_stream_equals_json(s, j)
 
@@ -353,6 +358,25 @@ def test_search_streams(ts, search_streams_response,
             session.TWITCH_KRAKENURL + 'search/streams',
             params=p,
             allow_redirects=True, headers=None, data=None)
+
+
+@pytest.mark.parametrize('sessionfixture',
+                         ['authts',
+                          pytest.mark.xfail(raises=exceptions.NotAuthorizedError)('ts')])
+def test_followed_streams(request, sessionfixture, search_streams_response,
+                          stream1json, stream2json, auth_headers):
+    ts = request.getfuncargvalue(sessionfixture)
+    requests.Session.request.return_value = search_streams_response
+    streams = ts.followed_streams(limit=42, offset=13)
+    # check result
+    assert len(streams) == 2
+    for s, j in zip(streams, [stream1json, stream2json]):
+        conftest.assert_stream_equals_json(s, j)
+    #check call
+    requests.Session.request.assert_called_with('GET',
+        session.TWITCH_KRAKENURL + 'streams/followed',
+        params={'limit': 42, 'offset': 13},
+        allow_redirects=True, headers=auth_headers, data=None)
 
 
 def test_get_user(ts, get_user_response,
