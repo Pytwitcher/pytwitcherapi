@@ -50,7 +50,7 @@ setup(
     url='https://github.com/Pytwitcher/pytwitcherapi',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-    package_data={'pytwitcherapi': ['html/*.html', 'ssl/*.pem']},
+    package_data={'pytwitcherapi': ['html/*.html', 'ssl/*.*']},
     include_package_data=True,
     tests_require=tests_require,
     install_requires=install_requires,
