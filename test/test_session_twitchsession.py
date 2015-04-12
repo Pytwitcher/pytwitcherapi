@@ -391,7 +391,7 @@ def assert_html_response(r, filename):
     sitepath = pkg_resources.resource_filename('pytwitcherapi', datapath)
     with open(sitepath, 'r') as f:
         html = f.read()
-    assert r.content == html
+    assert r.content == html.encode('urf-8')
 
 
 @pytest.fixture(scope='function')
@@ -417,6 +417,7 @@ def test_login(login_server):
     ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
     assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
                        'scope': ['channel_read']}
+
 
 def test_get_authurl(ts):
     ts.state = 'a'

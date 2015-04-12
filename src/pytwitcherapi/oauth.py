@@ -77,7 +77,7 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
         sitepath = pkg_resources.resource_filename('pytwitcherapi', datapath)
         with open(sitepath, 'r') as f:
             html = f.read()
-        self.wfile.write(html.encode("utf-8"))
+        self.wfile.write(html.encode('utf-8'))
 
     def do_POST(self, ):
         """Handle POST requests
