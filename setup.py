@@ -42,7 +42,7 @@ tests_require = ['tox']
 
 setup(
     name='pytwitcherapi',
-    version='0.2.0',
+    version='0.2.1',
     description='Python API for interacting with twitch.tv',
     long_description=long_description,
     author='David Zuber',
