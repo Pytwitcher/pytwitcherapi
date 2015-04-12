@@ -36,7 +36,7 @@ class Tox(TestCommand):
 
 
 long_description = read('README.rst', 'HISTORY.rst')
-install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'urllib3', 'pyopenssl', 'ndg-httpsclient', 'pyasn1']
+install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8']
 tests_require = ['tox']
 
 
