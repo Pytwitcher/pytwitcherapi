@@ -391,7 +391,7 @@ def assert_html_response(r, filename):
     sitepath = pkg_resources.resource_filename('pytwitcherapi', datapath)
     with open(sitepath, 'r') as f:
         html = f.read()
-    assert r.content == html.encode('urf-8')
+    assert r.content == html.encode('utf-8')
 
 
 @pytest.fixture(scope='function')
