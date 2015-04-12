@@ -23,3 +23,8 @@ History
 +++++++++++++++++++++++++++++++++++++++
 
 * Fix wrap json using actual class instead of cls
+
+0.2.0 (2015-04-12)
++++++++++++++++++++++++++++++++++++++++
+
+* Authentication: User can login and TwitchSession can retrieve followed streams.

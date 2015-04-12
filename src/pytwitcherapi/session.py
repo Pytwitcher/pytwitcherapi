@@ -1,11 +1,17 @@
 """API for communicating with twitch"""
 import contextlib
+import functools
+import threading
 
 import m3u8
+import oauthlib.oauth2
 import requests
 import requests.utils
+import requests_oauthlib
 
-from pytwitcherapi import models
+import pytwitcherapi
+from pytwitcherapi import models, oauth, exceptions
+
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
 """The baseurl for the twitch api"""
@@ -19,8 +25,42 @@ TWITCH_USHERURL = 'http://usher.twitch.tv/api/'
 TWITCH_APIURL = 'http://api.twitch.tv/api/'
 """The baseurl for the old twitch api"""
 
+AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
+"""Authorisation Endpoint"""
+
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
+
+SCOPES = ['user_read']
+"""The scopes that PyTwitcher needs"""
+
+
+@contextlib.contextmanager
+def _restore_old_context(session):
+    oldheaders = session.headers
+    oldbaseurl = session.baseurl
+    try:
+        yield
+    finally:
+        session.headers = oldheaders
+        session.baseurl = oldbaseurl
+
+
+@contextlib.contextmanager
+def default(session):
+    """Contextmanager for a :class:`TwitchSession` make sure, you are using no baseurl
+    and the default headers.
+
+    :param session: the session to make use the Kraken API
+    :type session: :class:`TwitchSession`
+    :returns: None
+    :rtype: None
+    :raises: None
+    """
+    with _restore_old_context(session):
+        session.headers = requests.utils.default_headers()
+        session.baseurl = ""
+        yield
 
 
 @contextlib.contextmanager
@@ -37,16 +77,11 @@ def kraken(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.headers['Accept'] = TWITCH_HEADER_ACCEPT
         session.baseurl = TWITCH_KRAKENURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
 @contextlib.contextmanager
@@ -63,15 +98,10 @@ def usher(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_USHERURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
 @contextlib.contextmanager
@@ -88,23 +118,48 @@ def oldapi(session):
     :rtype: None
     :raises: None
     """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    try:
+    with _restore_old_context(session):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_APIURL
         yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
 
 
-class TwitchSession(requests.Session):
+def needs_auth(meth):
+    """Wraps a method of :class:`TwitchSession` and
+    raises an :class:`exceptions.NotAuthorizedError`
+    if before calling the method, the session isn't authorized.
+
+    :param meth:
+    :type meth:
+    :returns: the wrapped method
+    :rtype: Method
+    :raises: None
+    """
+    @functools.wraps(meth)
+    def wrapped(*args, **kwargs):
+        if not args[0].authorized:
+            raise exceptions.NotAuthorizedError('Please login first!')
+        return meth(*args, **kwargs)
+    return wrapped
+
+
+class TwitchSession(requests_oauthlib.OAuth2Session):
     """Session that stores a baseurl that will be prepended for every request
 
     You can use the contextmanagers :func:`kraken`, :func:`usher` and
     :func:`oldapi` to easily use the different APIs.
     They will set the baseurl and headers.
+
+    To get authorization, the user has to grant PyTwitcher access.
+    The workflow goes like this:
+
+      1. Start the login server with :meth:`TwitchSession.start_login_server`.
+      2. User should visit :meth:`TwitchSession.get_auth_url` in his
+         browser and follow insturctions (e.g Login and Allow PyTwitcher).
+      3. Check if the session is authorized with :meth:`TwitchSession.authorized`.
+      4. Shut the login server down with :meth:`TwitchSession.shutdown_login_server`.
+
+    Now you can use methods that need authorization.
     """
 
     def __init__(self):
@@ -112,9 +167,20 @@ class TwitchSession(requests.Session):
 
         :raises: None
         """
-        super(TwitchSession, self).__init__()
+        client = oauth.TwitchOAuthClient(client_id=CLIENT_ID)
+        super(TwitchSession, self).__init__(client_id=CLIENT_ID,
+                                            client=client,
+                                            scope=SCOPES,
+                                            redirect_uri=pytwitcherapi.REDIRECT_URI)
         self.baseurl = ''
         """The baseurl that gets prepended to every request url"""
+        self.login_server = None
+        """The server that handles the login redirect"""
+        self.login_thread = None
+        """The thread that serves the login server"""
+        self.current_user = None
+        """The currently logined user.
+        Use :meth:`TwitchSession.fetch_login_user` to set."""
 
     def request(self, method, url, **kwargs):
         """Constructs a :class:`requests.Request`, prepares it and sends it.
@@ -130,7 +196,11 @@ class TwitchSession(requests.Session):
         :raises: :class:`requests.HTTPError`
         """
         fullurl = self.baseurl + url if self.baseurl else url
-        r = super(TwitchSession, self).request(method, fullurl, **kwargs)
+        if oauthlib.oauth2.is_secure_transport(fullurl):
+            m = super(TwitchSession, self).request
+        else:
+            m = super(requests_oauthlib.OAuth2Session, self).request
+        r = m(method, fullurl, **kwargs)
         r.raise_for_status()
         return r
 
@@ -313,6 +383,26 @@ class TwitchSession(requests.Session):
                                  'offset': offset})
         return models.Stream.wrap_search(r)
 
+    @needs_auth
+    def followed_streams(self, limit=25, offset=0):
+        """Return the streams the current user follows.
+
+        Needs authorization ``user_read``.
+
+        :param limit: maximum number of results
+        :type limit: :class:`int`
+        :param offset: offset for pagination
+        :type offset::class:`int`
+        :returns: A list of streams
+        :rtype: :class:`list`of :class:`models.Stream` instances
+        :raises: None
+        """
+        with kraken(self):
+            r = self.get('streams/followed',
+                         params={'limit': limit,
+                                 'offset': offset})
+        return models.Stream.wrap_search(r)
+
     def get_user(self, name):
         """Get the user for the given name
 
@@ -325,6 +415,21 @@ class TwitchSession(requests.Session):
         with kraken(self):
             r = self.get('user/' + name)
         return models.User.wrap_get_user(r)
+
+    @needs_auth
+    def fetch_login_user(self, ):
+        """Set and return the currently logined user
+
+        Sets :data:`TwitchSession.current_user`
+
+        :returns: The user instance
+        :rtype: :class:`models.User`
+        :raises: None
+        """
+        with kraken(self):
+            r = self.get('user')
+        self.current_user = models.User.wrap_get_user(r)
+        return self.current_user
 
     def get_playlist(self, channel):
         """Return the playlist for the given channel
@@ -392,3 +497,44 @@ class TwitchSession(requests.Session):
         with oldapi(self):
             r = self.get('channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
+
+    def start_login_server(self, ):
+        """Start a server that will get a request from a user logging in.
+
+        This uses the Implicit Grant Flow of OAuth2. The user is asked
+        to login to twitch and grant PyTwitcher authorization.
+        Once the user agrees, he is redirected to an url.
+        This server will respond to that url and get the oauth token.
+
+        The server serves in another thread. To shut him down, call
+        :meth:`TwitchSession.shutdown_login_server`.
+
+        This sets the :data:`TwitchSession.login_server`,
+        :data:`TwitchSession.login_thread` variables.
+
+        :returns: The created server
+        :rtype: :class:`BaseHTTPServer.HTTPServer`
+        :raises: None
+        """
+        self.login_server = oauth.LoginServer(session=self)
+        self.login_thread = threading.Thread(target=self.login_server.serve_forever)
+        self.login_thread.start()
+
+    def shutdown_login_server(self, ):
+        """Shutdown the login server and thread
+
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self.login_server.shutdown()
+        self.login_thread.join()
+
+    def get_auth_url(self, ):
+        """Return the url for the user to authorize PyTwitcher
+
+        :returns: The url the user should visit to authorize PyTwitcher
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return self.authorization_url(AUTHORIZATION_BASE_URL)[0]
