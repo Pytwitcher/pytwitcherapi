@@ -434,7 +434,7 @@ def test_get_playlist(ts, mock_get_channel_access_token,
     channels = ['test_channel', channel1]
     params = {'token': token, 'sig': sig,
               'allow_audio_only': True,
-              'allow_source_only': True}
+              'allow_source': True}
     # assert the playlist finds these media ids
     mediaids = ['chunked', 'high', 'medium', 'low', 'mobile', 'audio_only']
     for c in channels:

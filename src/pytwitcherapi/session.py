@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import contextlib
 import functools
+import logging
 import threading
 
 import m3u8
@@ -15,6 +16,8 @@ from . import models, oauth, exceptions, constants
 
 
 __all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
+
+log = logging.getLogger(__name__)
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
 """The baseurl for the twitch api"""
@@ -39,14 +42,30 @@ SCOPES = ['user_read']
 
 
 @contextlib.contextmanager
-def _restore_old_context(session):
+def _restore_old_context(session, newcontextname=None):
+    """Contextmanager that restores the previous headers and baseurl of a
+    :class:`TwitchSession`.
+
+    :param session: The session to restore
+    :type session: :class:`TwitchSession`
+    :param newcontextname: The name of the new context you use. E.g. if you
+                           use a kraken context to access the kraken url, then
+                           you would provide 'kraken'. This is just for
+                           logging purposes and can be ommited. It would log:
+                           ``"Using kraken context for requests."``.
+    :type newcontextname: :class:`str`
+    """
     oldheaders = session.headers
     oldbaseurl = session.baseurl
+    if newcontextname:
+        log.debug("Entering %s context for requests.", newcontextname)
     try:
         yield
     finally:
         session.headers = oldheaders
         session.baseurl = oldbaseurl
+        if newcontextname:
+            log.debug("Exiting %s context for requests.", newcontextname)
 
 
 @contextlib.contextmanager
@@ -60,7 +79,7 @@ def default(session):
     :rtype: None
     :raises: None
     """
-    with _restore_old_context(session):
+    with _restore_old_context(session, 'default'):
         session.headers = requests.utils.default_headers()
         session.baseurl = ""
         yield
@@ -80,7 +99,7 @@ def kraken(session):
     :rtype: None
     :raises: None
     """
-    with _restore_old_context(session):
+    with _restore_old_context(session, 'kraken'):
         session.headers = requests.utils.default_headers()
         session.headers['Accept'] = TWITCH_HEADER_ACCEPT
         session.baseurl = TWITCH_KRAKENURL
@@ -101,7 +120,7 @@ def usher(session):
     :rtype: None
     :raises: None
     """
-    with _restore_old_context(session):
+    with _restore_old_context(session, 'usher'):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_USHERURL
         yield
@@ -121,7 +140,7 @@ def oldapi(session):
     :rtype: None
     :raises: None
     """
-    with _restore_old_context(session):
+    with _restore_old_context(session, 'old api'):
         session.headers = requests.utils.default_headers()
         session.baseurl = TWITCH_APIURL
         yield
@@ -203,6 +222,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
             m = super(TwitchSession, self).request
         else:
             m = super(requests_oauthlib.OAuth2Session, self).request
+        log.debug("%s \"%s\" with %s", method, fullurl, kwargs)
         r = m(method, fullurl, **kwargs)
         r.raise_for_status()
         return r
@@ -449,7 +469,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         token, sig = self.get_channel_access_token(channel)
         params = {'token': token, 'sig': sig,
                   'allow_audio_only': True,
-                  'allow_source_only': True}
+                  'allow_source': True}
         with usher(self):
             r = self.get('channel/hls/%s.m3u8' % channel, params=params)
         playlist = m3u8.loads(r.text)
@@ -521,6 +541,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         self.login_server = oauth.LoginServer(session=self)
         self.login_thread = threading.Thread(target=self.login_server.serve_forever)
+        log.debug('Starting login server thread.')
         self.login_thread.start()
 
     def shutdown_login_server(self, ):
@@ -530,6 +551,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :rtype: None
         :raises: None
         """
+        log.debug('Shutting down the login server thread.')
         self.login_server.shutdown()
         self.login_thread.join()
 
