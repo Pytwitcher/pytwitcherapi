@@ -1,5 +1,7 @@
 """Contains classes that wrap the jsons returned by the twitch.tv API"""
 
+__all__ = ['Game', 'Channel', 'Stream', 'User']
+
 
 class Game(object):
     """Game on twitch.tv
