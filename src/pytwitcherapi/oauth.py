@@ -11,6 +11,7 @@ the server is gonna send a website, which will extract the access token,
 send it as a post request and give the user a response,
 that everything worked.
 """
+import logging
 import os
 import pkg_resources
 
@@ -22,6 +23,9 @@ try:
     from http import server
 except ImportError:
     import BaseHTTPServer as server
+
+
+log = logging.getLogger(__name__)
 
 
 class RedirectHandler(server.BaseHTTPRequestHandler):
@@ -57,8 +61,10 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
                 self.success_site_url: 'success_site.html'}
         site = urld.get(self.path)
         if not site:
+            log.debug("Requesting false url on login server.")
             self.send_error(404)
             return
+        log.debug('Requesting the login server. Responding with %s.', urld)
         self._set_headers()
         self._write_html(site)
 
@@ -130,6 +136,7 @@ class LoginServer(server.HTTPServer):
         :rtype: None
         :raises: None
         """
+        log.debug('Setting the token on %s.' % self.session)
         self.session.token_from_fragment(redirecturl)
 
 
