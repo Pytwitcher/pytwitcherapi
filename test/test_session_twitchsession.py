@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import contextlib
 import os
 import pkg_resources
@@ -8,14 +10,13 @@ import pytest
 import requests
 import requests.utils
 
-import pytwitcherapi
-from pytwitcherapi import session, models, exceptions
-from test import conftest
+from pytwitcherapi import session, models, exceptions, constants
+from . import conftest
 
 
 @pytest.fixture(scope='module')
 def auth_redirect_uri():
-    ruri = pytwitcherapi.REDIRECT_URI + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=user_read'
+    ruri = constants.REDIRECT_URI + '/#access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=user_read'
     return ruri
 
 
@@ -34,7 +35,7 @@ def ts(mock_session):
 
 @pytest.fixture(scope='function')
 def authts(ts, auth_redirect_uri):
-    uri =  auth_redirect_uri.replace('http://', 'https://')
+    uri = auth_redirect_uri.replace('http://', 'https://')
     ts.token_from_fragment(uri)
     return ts
 
@@ -71,8 +72,7 @@ def mock_session_get_viewers(monkeypatch):
 @pytest.fixture(scope='function')
 def playlist():
     """Return a sample playlist text"""
-    p =\
-"""#EXTM3U
+    p = """#EXTM3U
 #EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="chunked",NAME="Source"
 #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="chunked"
 sourclink
@@ -181,7 +181,7 @@ def test_raise_httperror(ts, mock_session_error_status):
 
 @pytest.mark.parametrize('sessionfixture',
     ['authts',
-    pytest.mark.xfail(raises=exceptions.NotAuthorizedError)('ts')])
+     pytest.mark.xfail(raises=exceptions.NotAuthorizedError)('ts')])
 def test_needs_auth(sessionfixture, request):
     ts = request.getfuncargvalue(sessionfixture)
 
@@ -201,10 +201,10 @@ def test_search_games(ts, games_search_response,
 
     # check result
     assert len(games) == 2
-    for g, j  in zip(games, [game1json, game2json]):
+    for g, j in zip(games, [game1json, game2json]):
         conftest.assert_game_equals_json(g, j)
 
-    #check if request was correct
+    # check if request was correct
     requests.Session.request.assert_called_with('GET',
         session.TWITCH_KRAKENURL + 'search/games',
         params={'query': 'test',
@@ -312,12 +312,12 @@ def test_get_streams(ts, search_streams_response, channel1,
              models.Game.wrap_json(game1json)]
     channels = [[channel1, 'asdf'], None]
     params = [{'game': game1json['name'],
-              'channel': 'test_channel,asdf',
-              'limit': 35,
-              'offset': 10},
+               'channel': 'test_channel,asdf',
+               'limit': 35,
+               'offset': 10},
               {'game': game1json['name'],
-              'limit': 35,
-              'offset': 10}]
+               'limit': 35,
+               'offset': 10}]
 
     for g, c, p in zip(games, channels, params):
         streams = ts.get_streams(game=g,
@@ -350,10 +350,10 @@ def test_search_streams(ts, search_streams_response,
     for s, j in zip(streams, [stream1json, stream2json]):
         conftest.assert_stream_equals_json(s, j)
 
-    p={'query': 'testquery',
-       'hls': False,
-       'limit': 25,
-       'offset': 10}
+    p = {'query': 'testquery',
+         'hls': False,
+         'limit': 25,
+         'offset': 10}
     requests.Session.request.assert_called_with('GET',
             session.TWITCH_KRAKENURL + 'search/streams',
             params=p,
@@ -372,7 +372,7 @@ def test_followed_streams(request, sessionfixture, search_streams_response,
     assert len(streams) == 2
     for s, j in zip(streams, [stream1json, stream2json]):
         conftest.assert_stream_equals_json(s, j)
-    #check call
+    # check call
     requests.Session.request.assert_called_with('GET',
         session.TWITCH_KRAKENURL + 'streams/followed',
         params={'limit': 42, 'offset': 13},
@@ -431,15 +431,15 @@ def test_get_playlist(ts, mock_get_channel_access_token,
     mockresponse.text = playlist
     requests.Session.request.return_value = mockresponse
     # test with different input types
-    channels=['test_channel', channel1]
-    params={'token':token,'sig':sig,
-            'allow_audio_only':True,
-            'allow_source_only':True}
+    channels = ['test_channel', channel1]
+    params = {'token': token, 'sig': sig,
+              'allow_audio_only': True,
+              'allow_source_only': True}
     # assert the playlist finds these media ids
-    mediaids=['chunked','high','medium','low','mobile','audio_only']
+    mediaids = ['chunked', 'high', 'medium', 'low', 'mobile', 'audio_only']
     for c in channels:
         p = ts.get_playlist(c)
-        for pl, mi in zip(p.playlists,mediaids):
+        for pl, mi in zip(p.playlists, mediaids):
             assert pl.media[0].group_id == mi
         # assert the request was correct
         requests.Session.request.assert_called_with('GET',
@@ -452,7 +452,7 @@ def test_get_playlist(ts, mock_get_channel_access_token,
 def test_get_quality_options(ts, mock_get_playlist, playlist, channel1):
     p = m3u8.loads(playlist)
     ts.get_playlist.return_value = p
-    channels=['test_channel', channel1]
+    channels = ['test_channel', channel1]
     for c in channels:
         options = ts.get_quality_options(c)
         assert options == ['source', 'high', 'medium', 'low', 'mobile', 'audio']
@@ -479,7 +479,7 @@ def login_server(request):
 
 
 def test_login(login_server, auth_redirect_uri):
-    ruri = pytwitcherapi.REDIRECT_URI
+    ruri = constants.REDIRECT_URI
     ts = login_server
     with pytest.raises(requests.HTTPError):
         ts.get(ruri + '/failingurl')
@@ -489,10 +489,12 @@ def test_login(login_server, auth_redirect_uri):
     assert_html_response(r, 'success_site.html')
     ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
     assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
-                       'scope': ['channel_read']}
+                        'scope': ['channel_read']}
 
 
 def test_get_authurl(ts):
     ts.state = 'a'
     url = ts.get_auth_url()
-    assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb&redirect_uri=http%3A%2F%2Flocalhost%3A42420&scope=user_read&state=a'
+    assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?\
+response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb\
+&redirect_uri=http%3A%2F%2Flocalhost%3A42420&scope=user_read&state=a'

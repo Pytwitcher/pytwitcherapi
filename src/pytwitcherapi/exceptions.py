@@ -1,6 +1,9 @@
 """Collection exceptions"""
 
 
+__all__ = ['PytwitcherException', 'NotAuthorizedError']
+
+
 class PytwitcherException(Exception):
     """Base exception for pytwitcher"""
     pass

@@ -1,4 +1,6 @@
 """API for communicating with twitch"""
+from __future__ import absolute_import
+
 import contextlib
 import functools
 import threading
@@ -9,9 +11,10 @@ import requests
 import requests.utils
 import requests_oauthlib
 
-import pytwitcherapi
-from pytwitcherapi import models, oauth, exceptions
+from . import models, oauth, exceptions, constants
 
+
+__all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
 
 TWITCH_KRAKENURL = 'https://api.twitch.tv/kraken/'
 """The baseurl for the twitch api"""
@@ -171,7 +174,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         super(TwitchSession, self).__init__(client_id=CLIENT_ID,
                                             client=client,
                                             scope=SCOPES,
-                                            redirect_uri=pytwitcherapi.REDIRECT_URI)
+                                            redirect_uri=constants.REDIRECT_URI)
         self.baseurl = ''
         """The baseurl that gets prepended to every request url"""
         self.login_server = None
