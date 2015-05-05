@@ -541,6 +541,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         self.login_server = oauth.LoginServer(session=self)
         self.login_thread = threading.Thread(target=self.login_server.serve_forever)
+        log.debug('Starting login server thread.')
         self.login_thread.start()
 
     def shutdown_login_server(self, ):
@@ -550,6 +551,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :rtype: None
         :raises: None
         """
+        log.debug('Shutting down the login server thread.')
         self.login_server.shutdown()
         self.login_thread.join()
 
