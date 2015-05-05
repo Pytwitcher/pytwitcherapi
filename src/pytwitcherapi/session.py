@@ -395,7 +395,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :type offset::class:`int`
         :returns: A list of streams
         :rtype: :class:`list`of :class:`models.Stream` instances
-        :raises: None
+        :raises: :class:`exceptions.NotAuthorizedError`
         """
         with kraken(self):
             r = self.get('streams/followed',
@@ -424,7 +424,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
 
         :returns: The user instance
         :rtype: :class:`models.User`
-        :raises: None
+        :raises: :class:`exceptions.NotAuthorizedError`
         """
         with kraken(self):
             r = self.get('user')
