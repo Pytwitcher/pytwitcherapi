@@ -28,3 +28,9 @@ History
 +++++++++++++++++++++++++++++++++++++++
 
 * Authentication: User can login and TwitchSession can retrieve followed streams.
+
+0.3.0 (2015-05-08)
++++++++++++++++++++++++++++++++++++++++
+
+* Easier imports. Only import the package for most of the cases.
+* Added logging. Configure your logger and pytwitcher will show debug messages.
