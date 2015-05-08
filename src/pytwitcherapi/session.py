@@ -299,8 +299,8 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
 
         :param name: the channel name
         :type name: :class:`str`
-        :returns: :class:`models.Channel`
-        :rtype: None
+        :returns: the model instance
+        :rtype: :class:`models.Channel`
         :raises: None
         """
         with kraken(self):
