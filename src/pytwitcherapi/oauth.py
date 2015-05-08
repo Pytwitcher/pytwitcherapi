@@ -11,20 +11,21 @@ the server is gonna send a website, which will extract the access token,
 send it as a post request and give the user a response,
 that everything worked.
 """
+import logging
 import os
 import pkg_resources
 
 import oauthlib.oauth2
 
-import pytwitcherapi
+from pytwitcherapi import constants
 
 try:
     from http import server
 except ImportError:
     import BaseHTTPServer as server
 
-LOGIN_SERVER_ADRESS = ('', 42420)
-"""Server adress of server that catches the redirection and the oauth token."""
+
+log = logging.getLogger(__name__)
 
 
 class RedirectHandler(server.BaseHTTPRequestHandler):
@@ -60,8 +61,10 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
                 self.success_site_url: 'success_site.html'}
         site = urld.get(self.path)
         if not site:
+            log.debug("Requesting false url on login server.")
             self.send_error(404)
             return
+        log.debug('Requesting the login server. Responding with %s.', urld)
         self._set_headers()
         self._write_html(site)
 
@@ -100,7 +103,7 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
         # thats why we make the hassle to send it as a post request.
         # Note: oauth does not allow for http connections
         # but twitch does, so we fake it
-        ruri = pytwitcherapi.REDIRECT_URI.replace('http://', 'https://')
+        ruri = constants.REDIRECT_URI.replace('http://', 'https://')
         self.server.set_token(ruri + self.path.replace('?', '#'))
 
 
@@ -112,13 +115,15 @@ class LoginServer(server.HTTPServer):
     def __init__(self, session):
         """Initialize a new server.
 
-        The server will be on :data:`LOGIN_SERVER_ADRESS`.
+        The server will be on :data:`constants.LOGIN_SERVER_ADRESS`.
 
         :param session: the session that needs a token
         :type session: :class:`requests_oauthlib.OAuth2Session`
         :raises: None
         """
-        server.HTTPServer.__init__(self, LOGIN_SERVER_ADRESS, RedirectHandler)
+        server.HTTPServer.__init__(self,
+                                   constants.LOGIN_SERVER_ADRESS,
+                                   RedirectHandler)
         self.session = session
         """The session that needs a token"""
 
@@ -131,6 +136,7 @@ class LoginServer(server.HTTPServer):
         :rtype: None
         :raises: None
         """
+        log.debug('Setting the token on %s.' % self.session)
         self.session.token_from_fragment(redirecturl)
 
 
@@ -154,7 +160,8 @@ class TwitchOAuthClient(oauthlib.oauth2.MobileApplicationClient):
 
         This is overwritten to change the headers slightly.
         """
-        uri, headers, body = super(TwitchOAuthClient, self)._add_bearer_token(*args, **kwargs)
+        s = super(TwitchOAuthClient, self)
+        uri, headers, body = s._add_bearer_token(*args, **kwargs)
         authheader = headers.get('Authorization')
         if authheader:
             headers['Authorization'] = authheader.replace('Bearer', 'OAuth')
