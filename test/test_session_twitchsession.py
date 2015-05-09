@@ -2,15 +2,16 @@ from __future__ import absolute_import
 
 import contextlib
 import os
-import pkg_resources
 
 import m3u8
 import mock
+import pkg_resources
 import pytest
 import requests
 import requests.utils
 
-from pytwitcherapi import session, models, exceptions, constants
+from pytwitcherapi import constants, exceptions, models, session
+
 from . import conftest
 
 

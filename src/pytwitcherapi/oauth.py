@@ -13,9 +13,9 @@ that everything worked.
 """
 import logging
 import os
-import pkg_resources
 
 import oauthlib.oauth2
+import pkg_resources
 
 from pytwitcherapi import constants
 
