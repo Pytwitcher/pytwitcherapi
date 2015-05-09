@@ -40,8 +40,9 @@ pytwitcherapi
 
 
 
+Twitch is a trademark or registered trademark of Twitch Interactive, Inc. in the U.S. and/or other countries. "pytwitcher" and "pytwitcherapi" is not operated by, sponsored by, or affiliated with Twitch Interactive, Inc. in any way.
 
-Python API for interacting with twitch.tv
+Python API for interacting with `twitch.tv  <https://github.com/justintv/Twitch-API>`_.
 
 
 Features

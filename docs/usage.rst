@@ -2,7 +2,7 @@
 Usage
 ========
 
-:class:`pytwitcherapi.TwitchSession` class is the central class for interacting with twitch::
+:class:`pytwitcherapi.TwitchSession` class is the central class for interacting with `twitch.tv  <https://github.com/justintv/Twitch-API>`_::
 
   import pytwitcherapi
 
