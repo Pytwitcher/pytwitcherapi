@@ -478,7 +478,9 @@ def login_server(request):
     return ts
 
 
-def test_login(login_server, auth_redirect_uri):
+@pytest.mark.parametrize('execution_number', range(2))
+def test_login(login_server, auth_redirect_uri, execution_number):
+    scopes = '+'.join(session.SCOPES)
     ruri = constants.REDIRECT_URI
     ts = login_server
     with pytest.raises(requests.HTTPError):
@@ -487,14 +489,15 @@ def test_login(login_server, auth_redirect_uri):
     assert_html_response(r, 'extract_token_site.html')
     r = ts.get(ruri + '/success')
     assert_html_response(r, 'success_site.html')
-    ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=channel_read')
+    ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=%s' % scopes)
     assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
-                        'scope': ['channel_read']}
+                        'scope': session.SCOPES}
 
 
 def test_get_authurl(ts):
+    scopes = '+'.join(session.SCOPES)
     ts.state = 'a'
     url = ts.get_auth_url()
     assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?\
 response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb\
-&redirect_uri=http%3A%2F%2Flocalhost%3A42420&scope=user_read&state=a'
+&redirect_uri=http%%3A%%2F%%2Flocalhost%%3A42420&scope=%s&state=a' % scopes
