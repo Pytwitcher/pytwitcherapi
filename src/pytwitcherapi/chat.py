@@ -225,7 +225,7 @@ class ChatServerStatus(object):
         :returns: True, if equal
         :rtype: :class:`bool`
         """
-        if isinstance(other, basestring):
+        if isinstance(other, str):
             return self.address == other
         if isinstance(other, ChatServerStatus):
             return self.address == other.address
