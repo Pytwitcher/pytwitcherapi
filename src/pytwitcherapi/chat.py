@@ -62,17 +62,26 @@ class ChatServerStatus(object):
 
         A server status is lesser when:
 
-          1. it's offline but the other isn't.
+          1. it's status is worse than other. Status values:
+
+             * online - 1
+             * slow - 2
+             * everything else - 3
+             * offline - 99
+
           2. It has more errors.
-          2. It has more lags.
+          3. It has more lags.
 
         :param other: the other server status to compare
         :type other: :class:`ChatServerStatus`
         :returns: True, if lesser than other
         :rtype: :class:`bool`
         """
+        statusd = {'online': 0,
+                   'slow': 1,
+                   'offline': 99}
         if self.status != other.status:
-            return self.status == 'online'
+            return statusd.get(self.status, 2) < statusd.get(other.status, 2)
         if self.errors == other.errors:
             return self.lag < other.lag
         return self.errors < other.errors
