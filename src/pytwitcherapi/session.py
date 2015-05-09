@@ -37,7 +37,7 @@ AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
 
-SCOPES = ['user_read']
+SCOPES = ['user_read', 'chat_login']
 """The scopes that PyTwitcher needs"""
 
 
