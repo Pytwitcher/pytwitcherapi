@@ -553,6 +553,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         log.debug('Shutting down the login server thread.')
         self.login_server.shutdown()
+        self.login_server.server_close()
         self.login_thread.join()
 
     def get_auth_url(self, ):
