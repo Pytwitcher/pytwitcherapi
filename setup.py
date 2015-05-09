@@ -36,7 +36,7 @@ class Tox(TestCommand):
 
 
 long_description = read('README.rst', 'HISTORY.rst')
-install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8']
+install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'irc']
 tests_require = ['tox']
 
 
