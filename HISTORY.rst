@@ -34,3 +34,8 @@ History
 
 * Easier imports. Only import the package for most of the cases.
 * Added logging. Configure your logger and pytwitcher will show debug messages.
+
+0.3.1 (2015-05-09)
++++++++++++++++++++++++++++++++++++++++
+
+* Fix login server shutdown by correctly closing the socket
