@@ -55,7 +55,7 @@ class ChatServerStatus(object):
             return self.address == other
         if isinstance(other, ChatServerStatus):
             return self.address == other.address
-        return super(ChatServerStatus, self).__eq__(other)
+        return self is other
 
     def __lt__(self, other):
         """Return whether a server status is lesser than the other.
