@@ -15,10 +15,12 @@ def test_eq(servers):
     s1 = chat.ChatServerStatus('192.16.64.11:80')
     assert servers[0] == s1,\
         """Servers with same address should be equal"""
+    assert not (s1 == 123),\
+        """Servers should not be eqaul to other classes with different id"""
 
 
 def test_noteq(servers):
-    assert servers[0] != servers[1],\
+    assert not (servers[0] == servers[1]),\
         """Servers with different address should not be equal"""
 
 
