@@ -68,6 +68,38 @@ class Reactor(irc.client.Reactor):
             self._looping = False
 
 
+def add_serverconnection_methods(cls):
+    """Add a bunch of methods to an :class:`irc.client.SimpleIRCClient`
+    to send commands and messages.
+
+    Basically it wraps a bunch of methdos from
+    :class:`irc.client.ServerConnection` to be
+    :meth:`irc.client.Reactor.execute_delayed`.
+    That way, you can easily send, even if the IRCClient is running in
+    :class:`IRCClient.process_forever` in another thread.
+
+    :param cls: The class to add the methods do.
+    :type cls: :class:`irc.client.SimpleIRCClient`
+    :returns: None
+    """
+    methods = ['action', 'admin', 'cap', 'ctcp', 'ctcp_reply',
+               'globops', 'info', 'invite', 'ison', 'join',
+               'kick', 'links', 'list', 'lusers', 'mode',
+               'motd', 'names', 'nick', 'notice', 'oper', 'part',
+               'part', 'pass_', 'ping', 'pong', 'privmsg',
+               'privmsg_many', 'quit', 'send_raw', 'squit',
+               'stats', 'time', 'topic', 'trace', 'user', 'userhost',
+               'users', 'version', 'wallops', 'who', 'whois', 'whowas']
+    for m in methods:
+        exec("""def method(self, *args):
+    f = getattr(self.connection, %r)
+    self.reactor.execute_delayed(0, f, arguments=args)""" % m)
+        f = getattr(irc.client.ServerConnection, m)
+        method.__name__ = m
+        method.__doc__ = f.__doc__
+        setattr(cls, method.__name__, method)
+
+
 class IRCClient(irc.client.SimpleIRCClient):
     """Simple IRC client which can connect to a single
     :class:`pytwitcherapi.Channel`.
@@ -216,7 +248,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        pass
+        self.log.info('%s :%s', event.target, event.arguments[0])
 
     def on_privmsg(self, connection, event):
         """Handle the private message event
@@ -229,35 +261,10 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        pass
+        self.log.info('%s :%s', event.target, event.arguments[0])
 
-    def _send_privmsg(self, target, message):
-        """Send a private message to target
 
-        :param target: the target channel or user
-        :type target: :class:`str`
-        :param message: the message to send
-        :type message: :class:`str`
-        """
-        self.log.debug('PRIVMSG %s :%s' % (target, message))
-        self.connection.privmsg(target, message)
-
-    def send_privmsg(self, message, target=None):
-        """Send a message
-
-        If target is None, send to the channel.
-        This method is thread safe.
-
-        You can use it to send messages from another thread.
-
-        :param message: the message to send
-        :type message: :class:`str`
-        :param target: the target to send the message to
-        :type target: :class:`str` | None
-        :returns: None
-        """
-        target = target or self.target
-        self.reactor.execute_delayed(0, self._send_privmsg, arguments=(target, message))
+add_serverconnection_methods(IRCClient)
 
 
 class ChatServerStatus(object):
