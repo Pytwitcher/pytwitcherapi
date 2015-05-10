@@ -96,8 +96,8 @@ def test_client(ircserver, ircclient, ircthreads, access_token):
     while not ircclient.joined:
         time.sleep(0.1)
 
-    ircclient.send_privmsg('hahaha')
-    ircclient.send_privmsg('hihihi')
+    ircclient.privmsg(ircclient.target, 'hahaha')
+    ircclient.privmsg(ircclient.target, 'hihihi')
     # wait till messages have arrived at the server
     while not IRCServerClient.messages:
         time.sleep(0.1)

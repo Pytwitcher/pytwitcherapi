@@ -91,6 +91,7 @@ def add_serverconnection_methods(cls):
                'stats', 'time', 'topic', 'trace', 'user', 'userhost',
                'users', 'version', 'wallops', 'who', 'whois', 'whowas']
     for m in methods:
+        method = None
         exec("""def method(self, *args):
     f = getattr(self.connection, %r)
     self.reactor.execute_delayed(0, f, arguments=args)""" % m)
