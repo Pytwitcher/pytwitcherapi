@@ -92,6 +92,10 @@ class IRCClient(irc.client.SimpleIRCClient):
         When setting the channel, automatically connect to it.
         If channel is None, disconnect.
         """
+        self.shutdown = self.reactor.shutdown
+        """Call this method for shutting down the client. This is thread safe."""
+        self.process_forever = self.reactor.process_forever
+        """Call this method to process messages until shutdown() is called"""
 
     def __repr__(self, ):
         """Return the canonical string representation of the object
@@ -145,18 +149,55 @@ class IRCClient(irc.client.SimpleIRCClient):
                                 password=password)
 
     def on_welcome(self, connection, event):
+        """Handle the welcome event
+
+        Automatically join the channel.
+
+        :param connection: the connection with the event
+        :type connection: :class:`irc.client.ServerConnection`
+        :param event: the event to handle
+        :type event: :class:`irc.client.Event`
+        :returns: None
+        """
         if irc.client.is_channel(self.target):
             self.log.debug('Joining %s, %s', connection, event)
             connection.join(self.target)
 
     def on_pubmsg(self, connection, event):
-        self.log.info('%s: %s', event.source.split('!')[0], event.arguments[0])
+        """Handle the public message event
+
+        This does nothing. Override to handle public messages.
+
+        :param connection: the connection with the event
+        :type connection: :class:`irc.client.ServerConnection`
+        :param event: the event to handle
+        :type event: :class:`irc.client.Event`
+        :returns: None
+        """
+        pass
 
     def on_privmsg(self, connection, event):
-        self.log.info('%s: %s', event.source.split('!')[0], event.arguments[0])
+        """Handle the private message event
+
+        This does nothing. Override to handle private messages.
+
+        :param connection: the connection with the event
+        :type connection: :class:`irc.client.ServerConnection`
+        :param event: the event to handle
+        :type event: :class:`irc.client.Event`
+        :returns: None
+        """
+        pass
 
     def _send_privmsg(self, target, message):
-        self.log.info('SENDING %s', message)
+        """Send a private message to target
+
+        :param target: the target channel or user
+        :type target: :class:`str`
+        :param message: the message to send
+        :type message: :class:`str`
+        """
+        self.log.debug('PRIVMSG %s :%s' % (target, message))
         self.connection.privmsg(target, message)
 
     def send_privmsg(self, message, target=None):
@@ -164,6 +205,8 @@ class IRCClient(irc.client.SimpleIRCClient):
 
         If target is None, send to the channel.
         This method is thread safe.
+
+        You can use it to send messages from another thread.
 
         :param message: the message to send
         :type message: :class:`str`
@@ -173,9 +216,6 @@ class IRCClient(irc.client.SimpleIRCClient):
         """
         target = target or self.target
         self.reactor.execute_delayed(0, self._send_privmsg, arguments=(target, message))
-
-    def shutdown(self):
-        self.reactor.shutdown()
 
 
 class ChatServerStatus(object):

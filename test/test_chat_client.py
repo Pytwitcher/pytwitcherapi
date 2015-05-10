@@ -78,7 +78,7 @@ def ircclient(ircserver, authts, channel1):
 @pytest.fixture(scope='function')
 def ircthreads(request, ircserver, ircclient):
     t1 = threading.Thread(target=ircserver.serve_forever)
-    t2 = threading.Thread(target=ircclient.reactor.process_forever,
+    t2 = threading.Thread(target=ircclient.process_forever,
                           kwargs={'timeout': 0.2})
 
     def fin():
