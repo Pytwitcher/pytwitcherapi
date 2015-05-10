@@ -109,8 +109,9 @@ class IRCClient(irc.client.SimpleIRCClient):
     This will block the current thread though.
     Calling :meth:`IRCClient.shutdown` will stop the loop.
 
-    To send a message while the client is in its event loop, use
-    :meth:`IRCClient.send_msg`.
+    There are a lot of methods that can make the client send
+    commands while the client is in its event loop.
+    These methods are wrapped ones of :class:`irc.client.ServerConnection`.
 
     Little example with threads. Change ``input`` to ``raw_input`` for
     python 2::
@@ -122,7 +123,7 @@ class IRCClient(irc.client.SimpleIRCClient):
       session = ...  # we assume an authenticated TwitchSession
       channel = session.get_channel('somechannel')
       client = chat.IRCClient(session, channel)
-      t = threading.Thread(target=ircclient.process_forever,
+      t = threading.Thread(target=client.process_forever,
                            kwargs={'timeout': 0.2})
       t.start()
 
@@ -131,7 +132,7 @@ class IRCClient(irc.client.SimpleIRCClient):
               m = input('Send Message:')
               if not m: break;
               # will be processed in other thread
-              client.send_privmsg(m)
+              client.privmsg(client.target, m)
       finally:
           client.shutdown()
           t.join()
