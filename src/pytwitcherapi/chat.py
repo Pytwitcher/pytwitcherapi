@@ -216,7 +216,7 @@ class ChatServerStatus(object):
         self.lag = lag
         self.description = description
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         return "<%s %s, %s, %s, %s>" % (self.__class__.__name__, self.address,
                                         self.status, self.errors, self.lag)
 
