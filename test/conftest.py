@@ -2,13 +2,45 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import models, chat
+from pytwitcherapi import models, chat, session, constants
 
 
 @pytest.fixture(scope="function")
 def mock_session(monkeypatch):
     """Replace the request method of session with a mock."""
     monkeypatch.setattr(requests.Session, "request", mock.Mock())
+
+
+@pytest.fixture(scope='session')
+def access_token():
+    return 'u7amjlndoes3xupi4bb1jrzg2wrcm1'
+
+
+@pytest.fixture(scope='session')
+def auth_redirect_uri(access_token):
+    ruri = constants.REDIRECT_URI +\
+        '/#access_token=%s&scope=user_read' % access_token
+    return ruri
+
+
+@pytest.fixture(scope='function')
+def auth_headers():
+    return {'Authorization': 'OAuth u7amjlndoes3xupi4bb1jrzg2wrcm1'}
+
+
+@pytest.fixture(scope="function")
+def ts(mock_session):
+    """Return a :class:`session.TwitchSession`
+    and mock the request of :class:`Session`
+    """
+    return session.TwitchSession()
+
+
+@pytest.fixture(scope='function')
+def authts(ts, auth_redirect_uri):
+    uri = auth_redirect_uri.replace('http://', 'https://')
+    ts.token_from_fragment(uri)
+    return ts
 
 
 @pytest.fixture(scope="function",
