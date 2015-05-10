@@ -8,14 +8,19 @@ log = logging.getLogger(__name__)
 
 
 class Reactor(irc.client.Reactor):
+    """Reactor that can exit the process_forever loop.
 
+    Simply call :meth:`Reactor.shutdown`.
+
+    For more information see :class:`irc.client.Reactor`.
+    """
     def __do_nothing(*args, **kwargs):
         pass
 
     def __init__(self, on_connect=__do_nothing,
                  on_disconnect=__do_nothing,
                  on_schedule=__do_nothing):
-        """Constructor for Reactor objects.
+        """Initialize a reactor.
 
         :param on_connect: optional callback invoked when a new connection
                            is made.
@@ -66,6 +71,39 @@ class Reactor(irc.client.Reactor):
 class IRCClient(irc.client.SimpleIRCClient):
     """Simple IRC client which can connect to a single
     :class:`pytwitcherapi.Channel`.
+
+    You need an authenticated session with scope ``chat_login``.
+    Call :meth:`IRCClient.process_forever` to start the event loop.
+    This will block the current thread though.
+    Calling :meth:`IRCClient.shutdown` will stop the loop.
+
+    To send a message while the client is in its event loop, use
+    :meth:`IRCClient.send_msg`.
+
+    Little example with threads. Change ``input`` to ``raw_input`` for
+    python 2::
+
+      import threading
+
+      from pytwitcherapi import chat
+
+      session = ...  # we assume an authenticated TwitchSession
+      channel = session.get_channel('somechannel')
+      client = chat.IRCClient(session, channel)
+      t = threading.Thread(target=ircclient.process_forever,
+                           kwargs={'timeout': 0.2})
+      t.start()
+
+      try:
+          while True:
+              m = input('Send Message:')
+              if not m: break;
+              # will be processed in other thread
+              client.send_privmsg(m)
+      finally:
+          client.shutdown()
+          t.join()
+
     """
 
     reactor_class = Reactor
@@ -95,7 +133,11 @@ class IRCClient(irc.client.SimpleIRCClient):
         self.shutdown = self.reactor.shutdown
         """Call this method for shutting down the client. This is thread safe."""
         self.process_forever = self.reactor.process_forever
-        """Call this method to process messages until shutdown() is called"""
+        """Call this method to process messages until shutdown() is called.
+
+        :param timeout: timeout for waiting on data in seconds
+        :type timeout: :class:`float`
+        """
 
     def __repr__(self, ):
         """Return the canonical string representation of the object
