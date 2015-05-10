@@ -152,6 +152,9 @@ class IRCClient(irc.client.SimpleIRCClient):
     def on_pubmsg(self, connection, event):
         self.log.info('%s: %s', event.source.split('!')[0], event.arguments[0])
 
+    def on_privmsg(self, connection, event):
+        self.log.info('%s: %s', event.source.split('!')[0], event.arguments[0])
+
     def _send_privmsg(self, target, message):
         self.log.info('SENDING %s', message)
         self.connection.privmsg(target, message)
