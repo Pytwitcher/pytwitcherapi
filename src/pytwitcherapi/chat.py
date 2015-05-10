@@ -91,14 +91,13 @@ def add_serverconnection_methods(cls):
                'stats', 'time', 'topic', 'trace', 'user', 'userhost',
                'users', 'version', 'wallops', 'who', 'whois', 'whowas']
     for m in methods:
-        method = None
         exec("""def method(self, *args):
     f = getattr(self.connection, %r)
     self.reactor.execute_delayed(0, f, arguments=args)""" % m)
         f = getattr(irc.client.ServerConnection, m)
-        method.__name__ = m
-        method.__doc__ = f.__doc__
-        setattr(cls, method.__name__, method)
+        method.__name__ = m  # nopep8
+        method.__doc__ = f.__doc__  # nopep8
+        setattr(cls, method.__name__, method)  # nopep8
 
 
 class IRCClient(irc.client.SimpleIRCClient):
