@@ -1,5 +1,6 @@
 """IRC client for interacting with the chat of a channel."""
 import logging
+import functools  # nopep8
 
 import irc.client
 
@@ -78,6 +79,8 @@ def add_serverconnection_methods(cls):
     That way, you can easily send, even if the IRCClient is running in
     :class:`IRCClient.process_forever` in another thread.
 
+    On the plus side you can use positional and keyword arguments instead of just positional ones.
+
     :param cls: The class to add the methods do.
     :type cls: :class:`irc.client.SimpleIRCClient`
     :returns: None
@@ -91,9 +94,10 @@ def add_serverconnection_methods(cls):
                'stats', 'time', 'topic', 'trace', 'user', 'userhost',
                'users', 'version', 'wallops', 'who', 'whois', 'whowas']
     for m in methods:
-        exec("""def method(self, *args):
+        exec("""def method(self, *args, **kwargs):
     f = getattr(self.connection, %r)
-    self.reactor.execute_delayed(0, f, arguments=args)""" % m, globals())
+    p = functools.partial(f, *args, **kwargs)
+    self.reactor.execute_delayed(0, p)""" % m, globals(), locals())
         f = getattr(irc.client.ServerConnection, m)
         method.__name__ = m  # nopep8
         method.__doc__ = f.__doc__  # nopep8
@@ -263,6 +267,21 @@ class IRCClient(irc.client.SimpleIRCClient):
         :returns: None
         """
         self.log.info('%s :%s', event.target, event.arguments[0])
+
+    def send_msg(self, message):
+        """Send the given message to the channel
+
+        This is a convenience method for :meth:`IRCClient.privmsg`, which uses the
+        current channel as target. This method is thread safe and can be called
+        from another thread even if the client is running in :meth:`IRCClient.process_forever`.
+
+        :param message: The message to send
+        :type message: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self.privmsg(target=self.target, text=message)
 
 
 add_serverconnection_methods(IRCClient)
