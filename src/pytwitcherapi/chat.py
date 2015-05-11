@@ -1,11 +1,79 @@
 """IRC client for interacting with the chat of a channel."""
 import logging
 import functools  # nopep8
+import sys
 
 import irc.client
 
+if sys.version_info[0] == 2:
+    import Queue as queue
+else:
+    import queue
+
 
 log = logging.getLogger(__name__)
+
+
+class Chatter(object):
+    """A chat user object
+
+    Stores information about a chat user, like nicknames etc.
+    If the nickname is prefixed with ``#`` it is channel.
+    """
+
+    def __init__(self, nickname):
+        """Initialize a new chatter with the given nickname
+
+        :param nickname: the irc nickname
+        :type nickname: :class:`str`
+        :raises: None
+        """
+        super(Chatter, self).__init__()
+        self.nickname = nickname
+
+    def __repr__(self, ):
+        """Return the canonical string representation of the object
+
+        :returns: string representation
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return '<%s %s>' % (self.__class__.__name__, self.nickname)
+
+
+class Message(object):
+    """A messag object
+
+    Can be a private|public message from a server or user.
+    """
+
+    def __init__(self, source, target, text):
+        """Initialize a new message from source to target with the given text
+
+        :param source: The source chatter
+        :type source: :class:`Chatter`
+        :param target: The target chatter
+        :type target: :class:`Chatter`
+        :param text: the content of the message
+        :type text: :class:`str`
+        :raises: None
+        """
+        super(Message, self).__init__()
+        self.source = source
+        self.target = target
+        self.text = text
+
+    def __repr__(self, ):
+        """Return the canonical string representation of the object
+
+        :returns: string representation
+        :rtype: :class:`str`
+        :raises: None
+        """
+        text = self.text
+        if len(self.text) > 6:
+            text = self.text[:5] + '...'
+        return '<%s %s to %s: %s>' % (self.__class__.__name__, self.source, self.target, text)
 
 
 class Reactor(irc.client.Reactor):
@@ -145,7 +213,7 @@ class IRCClient(irc.client.SimpleIRCClient):
 
     reactor_class = Reactor
 
-    def __init__(self, session, channel):
+    def __init__(self, session, channel, queuesize=0):
         """Initialize a new irc client which can connect to the given
         channel.
 
@@ -154,6 +222,9 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type session: :class:`pytwitcherapi.TwitchSession`
         :param channel: a channel
         :type channel: :class:`pytwitcherapi.Channel`
+        :param queuesize: The queuesize for storing messages in :data:`IRCClient.messages`.
+                          If 0, unlimited size.
+        :type queuesize: :class:`int`
         :raises: None
         """
         super(IRCClient, self).__init__()
@@ -174,6 +245,12 @@ class IRCClient(irc.client.SimpleIRCClient):
 
         :param timeout: timeout for waiting on data in seconds
         :type timeout: :class:`float`
+        """
+        self.chatters = {}
+        """Dict with :class:`Chatter` as values and nicknames as keys."""
+        self.messages = queue.Queue(maxsize=queuesize)
+        """A queue which stores all private and public messages.
+        Usefull for accessing messages from another thread.
         """
 
     def __repr__(self, ):
@@ -242,10 +319,8 @@ class IRCClient(irc.client.SimpleIRCClient):
             self.log.debug('Joining %s, %s', connection, event)
             connection.join(self.target)
 
-    def on_pubmsg(self, connection, event):
-        """Handle the public message event
-
-        This does nothing. Override to handle public messages.
+    def store_message(self, connection, event):
+        """Store the message of event in :data:`IRCClient.messages`.
 
         :param connection: the connection with the event
         :type connection: :class:`irc.client.ServerConnection`
@@ -253,12 +328,42 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        self.log.info('%s :%s', event.target, event.arguments[0])
+        nicknames = []
+        for s in [event.source, event.target]:
+            if s.startswith('#'):
+                nickname = event.source
+            else:
+                mask = irc.client.NickMask(s)
+                nickname = mask.nick
+            nicknames.append(nickname)
+        source = self.chatters.setdefault(nicknames[0], Chatter(nicknames[0]))
+        target = self.chatters.setdefault(nicknames[1], Chatter(nicknames[1]))
+        m = Message(source, target, event.arguments[0])
+
+        while True:
+            try:
+                self.messages.put(m)
+                break
+            except queue.Full:
+                self.messages.get()
+
+    def on_pubmsg(self, connection, event):
+        """Handle the public message event
+
+        This stores the message in :data:`IRCClient.messages` via :meth:`IRCClient.store_message`.
+
+        :param connection: the connection with the event
+        :type connection: :class:`irc.client.ServerConnection`
+        :param event: the event to handle
+        :type event: :class:`irc.client.Event`
+        :returns: None
+        """
+        self.store_message(connection, event)
 
     def on_privmsg(self, connection, event):
         """Handle the private message event
 
-        This does nothing. Override to handle private messages.
+        This stores the message in :data:`IRCClient.messages` via :meth:`IRCClient.store_message`.
 
         :param connection: the connection with the event
         :type connection: :class:`irc.client.ServerConnection`
@@ -266,7 +371,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        self.log.info('%s :%s', event.target, event.arguments[0])
+        self.store_message(connection, event)
 
     def send_msg(self, message):
         """Send the given message to the channel
