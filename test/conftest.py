@@ -2,13 +2,45 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import models
+from pytwitcherapi import chat, constants, models, session
 
 
 @pytest.fixture(scope="function")
 def mock_session(monkeypatch):
     """Replace the request method of session with a mock."""
     monkeypatch.setattr(requests.Session, "request", mock.Mock())
+
+
+@pytest.fixture(scope='session')
+def access_token():
+    return 'u7amjlndoes3xupi4bb1jrzg2wrcm1'
+
+
+@pytest.fixture(scope='session')
+def auth_redirect_uri(access_token):
+    ruri = constants.REDIRECT_URI +\
+        '/#access_token=%s&scope=user_read' % access_token
+    return ruri
+
+
+@pytest.fixture(scope='function')
+def auth_headers():
+    return {'Authorization': 'OAuth u7amjlndoes3xupi4bb1jrzg2wrcm1'}
+
+
+@pytest.fixture(scope="function")
+def ts(mock_session):
+    """Return a :class:`session.TwitchSession`
+    and mock the request of :class:`Session`
+    """
+    return session.TwitchSession()
+
+
+@pytest.fixture(scope='function')
+def authts(ts, auth_redirect_uri):
+    uri = auth_redirect_uri.replace('http://', 'https://')
+    ts.token_from_fragment(uri)
+    return ts
 
 
 @pytest.fixture(scope="function",
@@ -325,3 +357,33 @@ def assert_user_equals_json(user, json):
     assert user.twitchid == json['_id']
     assert user.displayname == json['display_name']
     assert user.bio == json['bio']
+
+
+@pytest.fixture(scope='session')
+def servers_json():
+    j = [{"server": "192.16.64.11:80",
+          "ip": "192.16.64.11", "port": 80,
+          "description": "Chat Server",
+          "status": "online", "errors": 1,
+          "lag": 157},
+         {"server": "192.16.64.12:80",
+          "ip": "192.16.64.12", "port": 80,
+          "description": "Chat Server",
+          "status": "offline", "errors": 0,
+          "lag": 0},
+         {"server": "192.16.64.13:80",
+          "ip": "192.16.64.13", "port": 80,
+          "description": "Chat Server",
+          "status": "online", "errors": 0,
+          "lag": 200},
+         {"server": "192.16.64.14:80",
+          "ip": "192.16.64.14", "port": 80,
+          "description": "Chat Server",
+          "status": "online", "errors": 1,
+          "lag": 20}]
+    return j
+
+
+@pytest.fixture(scope='function')
+def servers(servers_json):
+    return [chat.ChatServerStatus(**d) for d in servers_json]

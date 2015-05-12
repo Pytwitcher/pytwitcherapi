@@ -39,3 +39,8 @@ History
 +++++++++++++++++++++++++++++++++++++++
 
 * Fix login server shutdown by correctly closing the socket
+
+0.4.0 (2015-05-12)
++++++++++++++++++++++++++++++++++++++++
+
+* IRC client for twitch chat
