@@ -14,6 +14,9 @@ else:  # pragma: no cover
 log = logging.getLogger(__name__)
 
 
+__all__ = ['IRCClient']
+
+
 class Chatter(object):
     """A chat user object
 
@@ -233,7 +236,7 @@ class IRCClient(irc.client.SimpleIRCClient):
               m = input('Send Message:')
               if not m: break;
               # will be processed in other thread
-              client.privmsg(client.target, m)
+              client.send_msg(m)
       finally:
           client.shutdown()
           t.join()
@@ -242,7 +245,7 @@ class IRCClient(irc.client.SimpleIRCClient):
 
     reactor_class = Reactor
 
-    def __init__(self, session, channel, queuesize=0):
+    def __init__(self, session, channel, queuesize=100):
         """Initialize a new irc client which can connect to the given
         channel.
 
