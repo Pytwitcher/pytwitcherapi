@@ -13,15 +13,16 @@ that everything worked.
 """
 import logging
 import os
+import sys
 
 import oauthlib.oauth2
 import pkg_resources
 
 from pytwitcherapi import constants
 
-try:
+if sys.version_info[0] == 3:  # pragma: no cover
     from http import server
-except ImportError:
+else:  # pragma: no cover
     import BaseHTTPServer as server
 
 

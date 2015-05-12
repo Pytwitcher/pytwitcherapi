@@ -1,10 +1,10 @@
+import sys
 import threading
 import time
-import sys
 
+import irc.server
 import mock
 import pytest
-import irc.server
 
 from pytwitcherapi import chat
 

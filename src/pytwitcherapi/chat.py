@@ -1,6 +1,6 @@
 """IRC client for interacting with the chat of a channel."""
-import logging
 import functools  # nopep8
+import logging
 import sys
 
 import irc.client

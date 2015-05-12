@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import models, chat, session, constants
+from pytwitcherapi import chat, constants, models, session
 
 
 @pytest.fixture(scope="function")

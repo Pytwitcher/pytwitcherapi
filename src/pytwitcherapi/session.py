@@ -12,7 +12,7 @@ import requests
 import requests.utils
 import requests_oauthlib
 
-from . import constants, exceptions, models, oauth, chat
+from . import chat, constants, exceptions, models, oauth
 
 __all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
 
