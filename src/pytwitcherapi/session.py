@@ -12,8 +12,7 @@ import requests
 import requests.utils
 import requests_oauthlib
 
-from . import models, oauth, exceptions, constants
-
+from . import chat, constants, exceptions, models, oauth
 
 __all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
 
@@ -37,7 +36,7 @@ AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
 CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 """The client id of pytwitcher on twitch."""
 
-SCOPES = ['user_read']
+SCOPES = ['user_read', 'chat_login']
 """The scopes that PyTwitcher needs"""
 
 
@@ -415,7 +414,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :param limit: maximum number of results
         :type limit: :class:`int`
         :param offset: offset for pagination
-        :type offset::class:`int`
+        :type offset: :class:`int`
         :returns: A list of streams
         :rtype: :class:`list`of :class:`models.Stream` instances
         :raises: :class:`exceptions.NotAuthorizedError`
@@ -564,3 +563,50 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :raises: None
         """
         return self.authorization_url(AUTHORIZATION_BASE_URL)[0]
+
+    def get_chat_server(self, channel):
+        """Get an appropriate chat server for the given channel
+
+        Usually the server is irc.twitch.tv. But because of the delicate
+        twitch chat, they use a lot of servers. Big events are on special
+        event servers. This method tries to find a good one.
+
+        :param channel: the channel with the chat
+        :type channel: :class:`models.Channel`
+        :returns: the server address and port
+        :rtype: (:class:`str`, :class:`int`)
+        :raises: None
+        """
+        with oldapi(self):
+            r = self.get('channels/%s/chat_properties' % channel.name)
+        json = r.json()
+        servers = json['chat_servers']
+
+        with default(self):
+            try:
+                r = self.get('http://twitchstatus.com/api/status?type=chat')
+            except requests.HTTPError:
+                log.debug('Error getting chat server status. Using random one.')
+                address = servers[0]
+            else:
+                reference = sorted([chat.ChatServerStatus(**d) for d in r.json()])
+                address = None
+                for r in reference:
+                    for s in servers:
+                        if s == r:
+                            # found a chatserver that has the same address
+                            # than one of the chatserverstats.
+                            # since the stats are sorted for performance
+                            # the first hit is the best, thus break
+                            address = s
+                            break
+                    if address:
+                        # already found one, so no need to check the other
+                        # refernces, which are worse
+                        break
+                else:
+                    # No chatserver matched one of the stats, just pick one
+                    address = servers[0]
+
+        server, port = address.split(':')
+        return server, int(port)

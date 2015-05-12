@@ -12,7 +12,6 @@ import os
 import jinja2
 import matrix
 
-
 jinja = jinja2.Environment(
     loader=jinja2.FileSystemLoader('conf'),
     trim_blocks=True,

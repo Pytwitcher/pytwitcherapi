@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from setuptools import setup
-from setuptools import find_packages
-from setuptools.command.test import test as TestCommand
+
 import io
 import os
 import sys
 
+from setuptools import find_packages, setup
+from setuptools.command.test import test as TestCommand
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -36,7 +36,7 @@ class Tox(TestCommand):
 
 
 long_description = read('README.rst', 'HISTORY.rst')
-install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8']
+install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'irc']
 tests_require = ['tox']
 
 

@@ -275,7 +275,8 @@ autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 # -- Intersphinx Config ---------------------------------------------------
 intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None),
                        'pyside': ('https://deptinfo-ensip.univ-poitiers.fr/ENS/pyside-docs/', None),
-                       'requests': ('http://docs.python-requests.org/en/latest/', None)}
+                       'requests': ('http://docs.python-requests.org/en/latest/', None),
+                       'irc': ('https://pythonhosted.org/irc/', None)}
 
 autosummary_generate = True
 

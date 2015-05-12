@@ -53,3 +53,4 @@ Features
 * Get the livestream playlist
 * OAauth Authentication. Can retrieve followed streams and more...
 * Good documentation and test coverage
+* IRC client for the chat
