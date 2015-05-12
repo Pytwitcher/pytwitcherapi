@@ -105,8 +105,8 @@ def ircclient2thread(request, ircclient2):
     t.setDaemon(True)
 
     def fin():
-        #ircclient2.shutdown()
-        #t.join()
+        ircclient2.shutdown()
+        t.join()
         pass
 
     request.addfinalizer(fin)
