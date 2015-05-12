@@ -197,7 +197,7 @@ def add_serverconnection_methods(cls):
         exec("""def method(self, *args, **kwargs):
     f = getattr(self.connection, %r)
     p = functools.partial(f, *args, **kwargs)
-    self.reactor.execute_delayed(0, p)""" % m, globals(), locals())
+    self.reactor.execute_delayed(0, p)""" % m, globals())
         f = getattr(irc.client.ServerConnection, m)
         method.__name__ = m  # nopep8
         method.__doc__ = f.__doc__  # nopep8
