@@ -414,7 +414,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :param limit: maximum number of results
         :type limit: :class:`int`
         :param offset: offset for pagination
-        :type offset::class:`int`
+        :type offset: :class:`int`
         :returns: A list of streams
         :rtype: :class:`list`of :class:`models.Stream` instances
         :raises: :class:`exceptions.NotAuthorizedError`
