@@ -17,28 +17,47 @@ log = logging.getLogger(__name__)
 class Chatter(object):
     """A chat user object
 
-    Stores information about a chat user, like nicknames etc.
-    If the nickname is prefixed with ``#`` it is channel.
+    Stores information about a chat user (source of an ircevent).
+
+    See :class:`irc.client.NickMask` for how the attributes are constructed.
     """
 
-    def __init__(self, nickname):
-        """Initialize a new chatter with the given nickname
+    def __init__(self, source):
+        """Initialize a new chatter
 
-        :param nickname: the irc nickname
-        :type nickname: :class:`str`
+        :param source: the source of an :class:`irc.client.Event`. E.g.
+                       ``'pinky!username@example.com'``
+        :type source:
         :raises: None
         """
         super(Chatter, self).__init__()
-        self.nickname = nickname
+        self.full = irc.client.NickMask(source)
+        """The full name (nickname!user@host)"""
+        self.nickname = self.full.nick
+        """The irc nickname"""
+        self.user = self.full.user
+        """The irc user"""
+        self.host = self.full.user
+        """The irc host"""
+        self.userhost = self.full.userhost
+        """The irc user @ irc host"""
 
-    def __repr__(self, ):
+    def __str__(self):
+        """Return a nice string representation of the object
+
+        :returns: :data:`Chatter.full`
+        :rtype: :class:`str`
+        """
+        return str(self.full)
+
+    def __repr__(self, ):  # pragma: no cover
         """Return the canonical string representation of the object
 
         :returns: string representation
         :rtype: :class:`str`
         :raises: None
         """
-        return '<%s %s>' % (self.__class__.__name__, self.nickname)
+        return '<%s %s>' % (self.__class__.__name__, self.full)
 
 
 class Message(object):
@@ -52,8 +71,8 @@ class Message(object):
 
         :param source: The source chatter
         :type source: :class:`Chatter`
-        :param target: The target chatter
-        :type target: :class:`Chatter`
+        :param target: the target
+        :type target: str
         :param text: the content of the message
         :type text: :class:`str`
         :raises: None
@@ -73,7 +92,17 @@ class Message(object):
         text = self.text
         if len(self.text) > 6:
             text = self.text[:5] + '...'
-        return '<%s %s to %s: %s>' % (self.__class__.__name__, self.source.nickname, self.target.nickname, text)
+        return '<%s %s to %s: %s>' % (self.__class__.__name__, self.source, self.target, text)
+
+    def __eq__(self, other):
+        """Return True if source, target and text is the same
+
+        :param other: the other message
+        :type other: :class:`Message`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        """
+        return self.source.full == other.source.full and self.target == other.target and self.text == other.text
 
 
 class Reactor(irc.client.Reactor):
@@ -247,13 +276,13 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type timeout: :class:`float`
         """
         self.chatters = {}
-        """Dict with :class:`Chatter` as values and nicknames as keys."""
+        """Dict with :class:`Chatter` as values and the :data:`irc.client.Event.source` (``'nick!user@host'``) as keys."""
         self.messages = queue.Queue(maxsize=queuesize)
         """A queue which stores all private and public messages.
         Usefull for accessing messages from another thread.
         """
 
-    def __repr__(self, ):
+    def __repr__(self, ):  # pragma: no cover
         """Return the canonical string representation of the object
 
         :returns: string representation
@@ -328,21 +357,12 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        nicknames = []
-        for s in [event.source, event.target]:
-            if s.startswith('#'):
-                nickname = event.source
-            else:
-                mask = irc.client.NickMask(s)
-                nickname = mask.nick
-            nicknames.append(nickname)
-        source = self.chatters.setdefault(nicknames[0], Chatter(nicknames[0]))
-        target = self.chatters.setdefault(nicknames[1], Chatter(nicknames[1]))
-        m = Message(source, target, event.arguments[0])
+        source = self.chatters.setdefault(event.source, Chatter(event.source))
+        m = Message(source, event.target, event.arguments[0])
 
         while True:
             try:
-                self.messages.put(m)
+                self.messages.put(m, block=False)
                 break
             except queue.Full:
                 self.messages.get()
