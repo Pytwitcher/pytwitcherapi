@@ -20,9 +20,9 @@ import pkg_resources
 
 from pytwitcherapi import constants
 
-if sys.version_info[0] == 3:  # pragma: no cover
+if sys.version_info[0] == 3:
     from http import server
-else:  # pragma: no cover
+else:
     import BaseHTTPServer as server
 
 

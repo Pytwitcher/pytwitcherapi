@@ -5,9 +5,9 @@ import sys
 
 import irc.client
 
-if sys.version_info[0] == 2:  # pragma: no cover
+if sys.version_info[0] == 2:
     import Queue as queue
-else:  # pragma: no cover
+else:
     import queue
 
 
