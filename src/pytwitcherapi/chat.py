@@ -5,9 +5,9 @@ import sys
 
 import irc.client
 
-if sys.version_info[0] == 2:
+if sys.version_info[0] == 2:  # pragma: no cover
     import Queue as queue
-else:
+else:  # pragma: no cover
     import queue
 
 
@@ -73,7 +73,7 @@ class Message(object):
         text = self.text
         if len(self.text) > 6:
             text = self.text[:5] + '...'
-        return '<%s %s to %s: %s>' % (self.__class__.__name__, self.source, self.target, text)
+        return '<%s %s to %s: %s>' % (self.__class__.__name__, self.source.nickname, self.target.nickname, text)
 
 
 class Reactor(irc.client.Reactor):
