@@ -1,9 +1,12 @@
 """IRC client for interacting with the chat of a channel."""
+import re  # I got a bad feeling about this
 import functools  # nopep8
 import logging
 import sys
 
 import irc.client
+import irc.events
+import irc.ctcp
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -15,6 +18,292 @@ log = logging.getLogger(__name__)
 
 
 __all__ = ['IRCClient']
+
+
+class Tag(object):
+    """An irc v3 tag
+
+    `Specification <http://ircv3.net/specs/core/message-tags-3.2.html>`_ for tags.
+    A tag will associate metadata with a message.
+
+    To get tags in twitch chat, you have to specify it in the
+    `capability negotiation<http://ircv3.net/specs/core/capability-negotiation-3.1.html>`_.
+    """
+
+    _tagpattern = r'^((?P<vendor>[a-zA-Z0-9\.\-]+)/)?(?P<name>[^ =]+)(=(?P<value>[^ \r\n;]+))?'
+    _parse_regexp = re.compile(_tagpattern)
+
+    def __init__(self, name, value=None, vendor=None):
+        """Initialize a new tag called name
+
+        :param name: The name of the tag
+        :type name: :class:`str`
+        :param value: The value of a tag
+        :type value: :class:`str` | None
+        :param vendor: the vendor for vendor specific tags
+        :type vendor: :class:`str` | tag
+        :raises: None
+        """
+        super(Tag, self).__init__()
+        self.name = name
+        self.value = value
+        self.vendor = vendor
+
+    def __repr__(self, ):  # pragma: no cover
+        """Return the canonical string representation of the object
+
+        :returns: string representation
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return '<%s name=%s, value=%s, vendor=%s>' % (self.__class__.__name__,
+                                                      self.name, self.value, self.vendor)
+
+    def __eq__(self, other):
+        """Return True if the tags are equal
+
+        :param other: the other tag
+        :type other: :class:`Tag`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self.name == other.name and\
+            self.value == other.value and\
+            self.vendor == other.vendor
+
+    @classmethod
+    def from_str(cls, tagstring):
+        """Create a tag by parsing the tag of a message
+
+        :param tagstring: A tag string described in the irc protocol
+        :type tagstring: :class:`str`
+        :returns: A tag
+        :rtype: :class:`Tag`
+        :raises: None
+        """
+        m = cls._parse_regexp.match(tagstring)
+        return cls(name=m.group('name'), value=m.group('value'), vendor=m.group('vendor'))
+
+
+class Emote(object):
+    """Emote from the emotes tag
+
+    An emote has an id and occurences in a message.
+    So each emote is tied to a specific message.
+
+    You can get the pictures here::
+
+        ``cdn.jtvnw.net/emoticons/v1/<emoteid>/1.0``
+
+    """
+
+    def __init__(self, emoteid, occurences):
+        """Initialize a new emote
+
+        :param emoteid: The emote id
+        :type emoteid: :class:`int`
+        :param occurences: a list of occurences, e.g.
+                           [(0, 4), (8, 12)]
+        :type occurences: :class:`list`
+        :raises: None
+        """
+        super(Emote, self).__init__()
+        self.emoteid = emoteid
+        """The emote identifier"""
+        self.occurences = occurences
+        """A list of occurences, e.g. [(0, 4), (8, 12)]"""
+
+    def __repr__(self, ):
+        """Return a canonical representation of the object
+
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return '<%s %s at %s>' % (self.__class__.__name__,
+                                  self.emoteid,
+                                  self.occurences)
+
+    @classmethod
+    def from_str(cls, emotestr):
+        """Create an emote from the emote tag key
+
+        :param emotestr: the tag key, e.g. ``'123:0-4'``
+        :type emotestr: :class:`str`
+        :returns: an emote
+        :rtype: :class:`Emote`
+        :raises: None
+        """
+        emoteid, occstr = emotestr.split(':')
+        occurences = []
+        for occ in occstr.split(','):
+            start, end = occ.split('-')
+            occurences.append((int(start), int(end)))
+        return cls(int(emoteid), occurences)
+
+    def __eq__(self, other):
+        """Return True if the emotes are the same
+
+        :param other: the other emote
+        :type other: :class:`Emote`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        """
+        eq = self.emoteid == other.emoteid
+        return eq and self.occurences == other.occurences
+
+
+class Event3(irc.client.Event):
+    """An IRC event with tags
+
+    See `tag specification <http://ircv3.net/specs/core/message-tags-3.2.html>`_.
+    """
+
+    def __init__(self, type, source, target, arguments=None, tags=None):
+        """Initialize a new event
+
+        :param type: a string describing the event
+        :type type: :class:`str`
+        :param source: The originator of the event. NickMask or server
+        :type source: :class:`irc.client.NickMask` | :class:`str`
+        :param target: The target of the event
+        :type target: :class:`str`
+        :param arguments: Any specific event arguments
+        :type arguments: :class:`list` | None
+        :raises: None
+        """
+        super(Event3, self).__init__(type, source, target, arguments)
+        self.tags = tags
+
+
+class ServerConnection3(irc.client.ServerConnection):
+    """ServerConncetion that can handle irc v3 tags
+
+    Tags are only handled for privmsg, pubmsg, notice events.
+    All other events might be handled the old way.
+    """
+
+    _cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
+    _rfc_1459_command_regexp = re.compile(_cmd_pat)
+
+    def _process_line(self, line):
+        """Process the given line and handle the events
+
+        :param line: the raw message
+        :type line: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        m = self._rfc_1459_command_regexp.match(line)
+
+        tags = self._process_tags(m.group('tags'))
+        source = self._process_prefix(m.group('prefix'))
+        command = self._process_command(m.group('command'))
+        arguments = self._process_arguments(m.group('argument'))
+
+        # Translate numerics into more readable strings.
+        command = irc.events.numeric.get(command, command)
+
+        if command not in ["privmsg", "notice"]:
+            return super(ServerConnection3, self)._process_line(line)
+
+        event = Event3("all_raw_messages", self.get_server_name(),
+                       None, [line], tags=tags)
+        self._handle_event(event)
+
+        target, message = arguments[0], arguments[1]
+        messages = irc.ctcp.dequote(message)
+
+        if command == "privmsg":
+            if irc.client.is_channel(target):
+                command = "pubmsg"
+        else:
+            if irc.client.is_channel(target):
+                command = "pubnotice"
+            else:
+                command = "privnotice"
+
+        for m in messages:
+            if isinstance(m, tuple):
+                if command in ["privmsg", "pubmsg"]:
+                    command = "ctcp"
+                else:
+                    command = "ctcpreply"
+
+                m = list(m)
+                log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                          "arguments: %s", tags, command, source, target, m)
+                event = Event3(command, source, target, m, tags=tags)
+                self._handle_event(event)
+                if command == "ctcp" and m[0] == "ACTION":
+                    event = Event3("action", source, target, m[1:], tags=tags)
+                    self._handle_event(event)
+            else:
+                log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                          "arguments: %s", tags, command, source, target, [m])
+                event = Event3(command, source, target, [m], tags=tags)
+                self._handle_event(event)
+
+    def _process_tags(self, tags):
+        """Process the tags of the message
+
+        :param tags: the tags string of a message
+        :type tags: :class:`str` | None
+        :returns: list of tags
+        :rtype: :class:`list` of :class:`Tag`
+        :raises: None
+        """
+        if not tags:
+            return []
+        return [Tag.from_str(x) for x in tags.split(';')]
+
+    def _process_prefix(self, prefix):
+        """Process the prefix of the message and return the source
+
+        Sets :data:`ServerConnection3.real_server_name` if not already set.
+
+        :param prefix: The prefix string of a message
+        :type prefix: :class:`str` | None
+        :returns: The prefix wrapped in :class:`irc.client.NickMask`
+        :rtype: :class:`irc.client.NickMask` | None
+        :raises: None
+        """
+        if not prefix:
+            return None
+        if not self.real_server_name:
+            self.real_server_name = prefix
+        return irc.client.NickMask(prefix)
+
+    def _process_command(self, command):
+        """Return a lower string version of the command
+
+        :param command: the command of the message
+        :type command: :class:`str` | None
+        :returns: The lower case version
+        :rtype: :class:`str` | None
+        :raises: None
+        """
+        if not command:
+            return None
+        return command.lower()
+
+    def _process_arguments(self, arguments):
+        """Process the arguments
+
+        :param arguments: arguments string of a message
+        :type arguments: :class:`str` | None
+        :returns: A list of arguments
+        :rtype: :class:`list` of :class:`str` | None
+        :raises: None
+        """
+        if not arguments:
+            return None
+        a = arguments.split(" :", 1)
+        arglist = a[0].split()
+        if len(a) == 2:
+            arglist.append(a[1])
+        return arglist
 
 
 class Chatter(object):
@@ -108,6 +397,155 @@ class Message(object):
         return self.source.full == other.source.full and self.target == other.target and self.text == other.text
 
 
+class Message3(Message):
+    """A message which stores information from irc v3 tags
+    """
+
+    def __init__(self, source, target, text, tags=None):
+        """Initialize a new message from source to target with the given text
+
+        :param source: The source chatter
+        :type source: :class:`Chatter`
+        :param target: the target
+        :type target: str
+        :param text: the content of the message
+        :type text: :class:`str`
+        :param tags: the irc v3 tags
+        :type tags: :class:`list` of :class:`Tag`
+        :raises: None
+        """
+        super(Message3, self).__init__(source, target, text)
+        self.color = None
+        """the hex representation of the user color"""
+        self._emotes = []
+        """list of emotes"""
+        self._subscriber = False
+        """True, if the user is a subscriber"""
+        self._turbo = False
+        """True, if the user is a turbo user"""
+        self.user_type = None
+        """Turbo type. None for regular ones.
+        Other user types are mod, global_mod, staff, admin.
+        """
+        self.set_tags(tags)
+
+    def __eq__(self, other):
+        """Return True if source, target, text and tags is the same
+
+        :param other: the other message
+        :type other: :class:`Message`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        """
+        eq = super(Message3, self).__eq__(other)
+        return eq and self.color == other.color and\
+            self.emotes == other.emotes and\
+            self.subscriber == other.subscriber and\
+            self.turbo == other.turbo and\
+            self.user_type == other.user_type
+
+    def set_tags(self, tags):
+        """For every known tag, set the appropriate attribute.
+
+        Known tags are:
+
+            :color: The user color
+            :emotes: A list of emotes
+            :subscriber: True, if subscriber
+            :turbo: True, if turbo user
+            :user_type: None, mod, staff, global_mod, admin
+
+        :param tags: a list of tags
+        :type tags: :class:`list` of :class:`Tag` | None
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        if tags is None:
+            return
+        attrmap = {'color': 'color', 'emotes': 'emotes',
+                   'subscriber': 'subscriber',
+                   'turbo': 'turbo', 'user-type': 'user_type'}
+        for t in tags:
+            attr = attrmap.get(t.name)
+            if not attr:
+                continue
+            else:
+                setattr(self, attr, t.value)
+
+    @property
+    def emotes(self, ):
+        """Return the emotes
+
+        :returns: the emotes
+        :rtype: :class:`list`
+        :raises: None
+        """
+        return self._emotes
+
+    @emotes.setter
+    def emotes(self, emotes):
+        """Set the emotes
+
+        :param emotes: the key of the emotes tag
+        :type emotes: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        if emotes is None:
+            self._emotes = []
+            return
+        es = []
+        for estr in emotes.split('/'):
+            es.append(Emote.from_str(estr))
+        self._emotes = es
+
+    @property
+    def subscriber(self):
+        """Return whether the message was sent from a subscriber
+
+        :returns: True, if subscriber
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self._subscriber
+
+    @subscriber.setter
+    def subscriber(self, issubscriber):
+        """Set whether the message was sent from a subscriber
+
+        :param issubsriber: '1', if subscriber
+        :type issubscriber: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._subscriber = bool(int(issubscriber))
+
+    @property
+    def turbo(self):
+        """Return whether the message was sent from a turbo user
+
+        :returns: True, if turbo
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self._turbo
+
+    @turbo.setter
+    def turbo(self, isturbo):
+        """Set whether the message was sent from a turbo user
+
+        :param issubsriber: '1', if turbo
+        :type isturbo: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._turbo = bool(int(isturbo))
+
+
 class Reactor(irc.client.Reactor):
     """Reactor that can exit the process_forever loop.
 
@@ -167,6 +605,26 @@ class Reactor(irc.client.Reactor):
         self.disconnect_all()
         with self.mutex:
             self._looping = False
+
+
+class Reactor3(Reactor):
+    """Reactor that uses irc v3 connections
+
+    Uses the :class:`ServerConnection3` class for connections.
+    They support :class:`Event3` with tags.
+    """
+
+    def server(self, ):
+        """Creates and returns a ServerConnection
+
+        :returns: a server connection
+        :rtype: :class:`ServerConnection3`
+        :raises: None
+        """
+        c = ServerConnection3(self)
+        with self.mutex:
+            self.connections.append(c)
+        return c
 
 
 def add_serverconnection_methods(cls):
@@ -243,7 +701,7 @@ class IRCClient(irc.client.SimpleIRCClient):
 
     """
 
-    reactor_class = Reactor
+    reactor_class = Reactor3
 
     def __init__(self, session, channel, queuesize=100):
         """Initialize a new irc client which can connect to the given
@@ -278,10 +736,8 @@ class IRCClient(irc.client.SimpleIRCClient):
         :param timeout: timeout for waiting on data in seconds
         :type timeout: :class:`float`
         """
-        self.chatters = {}
-        """Dict with :class:`Chatter` as values and the :data:`irc.client.Event.source` (``'nick!user@host'``) as keys."""
         self.messages = queue.Queue(maxsize=queuesize)
-        """A queue which stores all private and public messages.
+        """A queue which stores all private and public :class:`Message3`.
         Usefull for accessing messages from another thread.
         """
 
@@ -348,6 +804,9 @@ class IRCClient(irc.client.SimpleIRCClient):
         :returns: None
         """
         if irc.client.is_channel(self.target):
+            connection.cap('LS')
+            connection.cap('REQ', 'twitch.tv/tags')
+            connection.cap('END')
             self.log.debug('Joining %s, %s', connection, event)
             connection.join(self.target)
 
@@ -360,8 +819,8 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        source = self.chatters.setdefault(event.source, Chatter(event.source))
-        m = Message(source, event.target, event.arguments[0])
+        source = Chatter(event.source)
+        m = Message3(source, event.target, event.arguments[0], event.tags)
 
         while True:
             try:
