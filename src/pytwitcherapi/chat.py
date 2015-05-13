@@ -114,7 +114,7 @@ class Emote(object):
         self.occurences = occurences
         """A list of occurences, e.g. [(0, 4), (8, 12)]"""
 
-    def __repr__(self, ):
+    def __repr__(self, ):  # pragma: no cover
         """Return a canonical representation of the object
 
         :rtype: :class:`str`
