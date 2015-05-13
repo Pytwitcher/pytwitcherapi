@@ -80,6 +80,68 @@ class Tag(object):
         return cls(name=m.group('name'), value=m.group('value'), vendor=m.group('vendor'))
 
 
+class Emote(object):
+    """Emote from the emotes tag
+
+    An emote has an id and occurences in a message.
+    So each emote is tied to a specific message.
+    """
+
+    def __init__(self, emoteid, occurences):
+        """Initialize a new emote
+
+        :param emoteid: The emote id
+        :type emoteid: :class:`int`
+        :param occurences: a list of occurences, e.g.
+                           [(0, 4), (8, 12)]
+        :type occurences: :class:`list`
+        :raises: None
+        """
+        super(Emote, self).__init__()
+        self.emoteid = emoteid
+        """The emote identifier"""
+        self.occurences = occurences
+        """A list of occurences, e.g. [(0, 4), (8, 12)]"""
+
+    def __repr__(self, ):
+        """Return a canonical representation of the object
+
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return '<%s %s at %s>' % (self.__class__.__name__,
+                                  self.emoteid,
+                                  self.occurences)
+
+    @classmethod
+    def from_str(cls, emotestr):
+        """Create an emote from the emote tag key
+
+        :param emotestr: the tag key, e.g. ``'123:0-4'``
+        :type emotestr: :class:`str`
+        :returns: an emote
+        :rtype: :class:`Emote`
+        :raises: None
+        """
+        emoteid, occstr = emotestr.split(':')
+        occurences = []
+        for occ in occstr.split(','):
+            start, end = occ.split('-')
+            occurences.append((int(start), int(end)))
+        return cls(int(emoteid), occurences)
+
+    def __eq__(self, other):
+        """Return True if the emotes are the same
+
+        :param other: the other emote
+        :type other: :class:`Emote`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        """
+        eq = self.emoteid == other.emoteid
+        return eq and self.occurences == other.occurences
+
+
 class Event3(irc.client.Event):
     """An IRC event with tags
     """
