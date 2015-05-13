@@ -82,13 +82,56 @@ Here is a little example. To quit press ``CTRL-C``::
 
       try:
           while True:
-	      # waits until we receiv a message
-	      # you could also specify not to wait or set a timeout
-	      # see the official queue documentation.
-              m = client.messages.get()
-	      # Now you have the message in the main thread and can display the message in the
-	      # GUI or whatever you want
-	      print "Message from %s to %s: %s" % (m.source, m.target, m.text)
+	      try:
+                  m = client.messages.get(block=False)
+	      except queue.Empty:
+	          pass
+              else:
+                  # Now you have the message in the main thread and can display the message in the
+                  # GUI or whatever you want
+                  print "Message from %s to %s: %s" % (m.source, m.target, m.text)
+      finally:
+          client.shutdown()
+          t.join()
+
+
+-----------------
+Tags and metadata
+-----------------
+
+Twitch does support `tags <http://ircv3.net/specs/core/message-tags-3.2.html>`_.
+Tags store metadata about a message, like the color of the user,
+whether he is a subscriber, the :class:`pytwichterapi.chat.Emote` etc.
+These messages get safed id the message queue: :data:`pytwitcherapi.IRCClient.messages`.
+See the :class:`pytwitcherapi.chat.Message3` documentation for the additional metadata.
+
+
+Here is a little example. To quit press ``CTRL-C``::
+
+      import threading
+      import queue  # Queue for python 2
+
+      import pytwitcherapi
+
+      session = ...  # we assume an authenticated TwitchSession
+      channel = session.get_channel('somechannel')
+      client = pytwitcherapi.IRCClient(session, channel, queuesize=0)
+      t = threading.Thread(target=client.process_forever)
+      t.start()
+
+      try:
+          while True:
+	      try:
+                  m = client.messages.get(block=False)
+              except queue.Empty:
+                  pass
+             else:
+		 print m.color
+		 print m.subscriber
+		 print m.turbo
+		 print m.emotes
+		 print m.user_type
+
       finally:
           client.shutdown()
           t.join()

@@ -540,6 +540,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         self.login_server = oauth.LoginServer(session=self)
         self.login_thread = threading.Thread(target=self.login_server.serve_forever)
+        self.login_thread.setDaemon(True)
         log.debug('Starting login server thread.')
         self.login_thread.start()
 

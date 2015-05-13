@@ -168,8 +168,8 @@ def test_disconnect(ircserver, ircclient):
 @pytest.mark.timeout(10)
 def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
     c = chat.Chatter('testuser2!testuser2@localhost')
-    m1 = chat.Message(c, '#test_channel', 'mic check')
-    m2 = chat.Message(c, '#test_channel', 'onetwo')
+    m1 = chat.Message3(c, '#test_channel', 'mic check')
+    m2 = chat.Message3(c, '#test_channel', 'onetwo')
 
     while not ircclient2.joined:
         time.sleep(0)
@@ -177,7 +177,8 @@ def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
     for m in [m1, m2]:
         ircclient2.send_msg(m.text)
         try:
-            assert ircclient.messages.get(timeout=1) == m
+            msg = ircclient.messages.get(timeout=1)
+            assert msg == m
         except queue.Empty:
             raise AssertionError('ircclient did not store the message in the message queue')
 
