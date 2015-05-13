@@ -471,7 +471,10 @@ class Message3(Message):
         :rtype: None
         :raises: None
         """
-        self._emotes = [emotes]
+        es = []
+        for estr in emotes.split('/'):
+            es.append(Emote.from_str(estr))
+        self._emotes = es
 
     @property
     def subscriber(self):
