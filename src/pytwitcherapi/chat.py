@@ -1,4 +1,5 @@
 """IRC client for interacting with the chat of a channel."""
+import re  # I got a bad feeling about this
 import functools  # nopep8
 import logging
 import sys
@@ -15,6 +16,10 @@ log = logging.getLogger(__name__)
 
 
 __all__ = ['IRCClient']
+
+
+_cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
+_rfc_1459_command_regexp = re.compile(_cmd_pat)
 
 
 class Chatter(object):
@@ -348,6 +353,9 @@ class IRCClient(irc.client.SimpleIRCClient):
         :returns: None
         """
         if irc.client.is_channel(self.target):
+            connection.cap('LS')
+            connection.cap('REQ', 'twitch.tv/tags')
+            connection.cap('END')
             self.log.debug('Joining %s, %s', connection, event)
             connection.join(self.target)
 
