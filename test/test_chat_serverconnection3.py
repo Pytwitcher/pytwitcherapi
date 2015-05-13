@@ -66,17 +66,6 @@ def test_rfc_regex(message, tags, prefix, command, argument):
     assert m.group('tags') == tags
 
 
-def test_process_line_privmsg_no_tags(con):
-    l = ':nick1!nick1@somehost PRIVMSG nick2!nick2@somehost :Hallo'
-    con._process_line(l)
-    try:
-        irc.client.ServerConnection._process_line.assert_called_with(l)
-        assert not con._handle_event.called
-    except AssertionError:
-        raise AssertionError('If the message has no tags, \
-the old method should be called right away!')
-
-
 def test_process_line_other_cmd(con):
     l = '@aaa;bbb :#somechannel PART nick1!nick1@somehost'
     con._process_line(l)
@@ -202,4 +191,40 @@ def test_process_line_ctcpaction(cmd, target, event, con):
         # preserve stacktrace
         exc_info = sys.exc_info()
         e.args = ('Sent the action event incorrectly.\n' + e.args[0],)
+        raise exc_info[0], e, exc_info[2]
+
+
+@pytest.mark.parametrize('cmd,target,event', [('PRIVMSG', '#somechannel', 'pubmsg'),
+                                              ('PRIVMSG', 'nick2!nick2@somehost', 'privmsg'),
+                                              ('NOTICE', '#somechannel', 'pubnotice'),
+                                              ('NOTICE', 'nick2!nick2@somehost', 'privnotice')])
+def test_process_line_notags(cmd, target, event, con):
+    l = ':nick1!nick1@somehost %s %s :Hallo' % (cmd, target)
+    con._process_line(l)
+    try:
+        calls = con._handle_event.call_args_list
+        c1event = calls[0][0][0]
+        assert c1event.tags == []
+        assert c1event.type == 'all_raw_messages'
+        assert c1event.source == 'nick1!nick1@somehost'
+        assert c1event.target is None
+        assert c1event.arguments == [l]
+    except AssertionError as e:
+        # preserve stacktrace
+        exc_info = sys.exc_info()
+        e.args = ('Sent the all_raw_messages event incorrectly.\n' + e.args[0],)
+        raise exc_info[0], e, exc_info[2]
+
+    try:
+        calls = con._handle_event.call_args_list
+        c1event = calls[1][0][0]
+        assert c1event.tags == []
+        assert c1event.type == event
+        assert c1event.source == 'nick1!nick1@somehost'
+        assert c1event.target == target
+        assert c1event.arguments == ['Hallo']
+    except AssertionError as e:
+        # preserve stacktrace
+        exc_info = sys.exc_info()
+        e.args = ('Sent the privmsg event incorrectly.\n' + e.args[0],)
         raise exc_info[0], e, exc_info[2]

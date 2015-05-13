@@ -118,8 +118,6 @@ class ServerConnection3(irc.client.ServerConnection):
         :raises: None
         """
         m = self._rfc_1459_command_regexp.match(line)
-        if not m.group('tags'):
-            return super(ServerConnection3, self)._process_line(line)
 
         tags = self._process_tags(m.group('tags'))
         source = self._process_prefix(m.group('prefix'))
@@ -321,6 +319,143 @@ class Message(object):
         return self.source.full == other.source.full and self.target == other.target and self.text == other.text
 
 
+class Message3(Message):
+    """A message which stores information from irc v3 tags
+    """
+
+    def __init__(self, source, target, text, tags=None):
+        """Initialize a new message from source to target with the given text
+
+        :param source: The source chatter
+        :type source: :class:`Chatter`
+        :param target: the target
+        :type target: str
+        :param text: the content of the message
+        :type text: :class:`str`
+        :param tags: the irc v3 tags
+        :type tags: :class:`list` of :class:`Tag`
+        :raises: None
+        """
+        super(Message3, self).__init__(source, target, text)
+        self.color = None
+        self._emotes = []
+        self._subscriber = False
+        self._turbo = False
+        self.user_type = None
+
+        self.set_tags(tags)
+
+    def __eq__(self, other):
+        """Return True if source, target, text and tags is the same
+
+        :param other: the other message
+        :type other: :class:`Message`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        """
+        eq = super(Message3, self).__eq__(other)
+        return eq and self.color == other.color and\
+            self.emotes == other.emotes and\
+            self.subscriber == other.subscriber and\
+            self.turbo == other.turbo and\
+            self.user_type == other.user_type
+
+    def set_tags(self, tags):
+        """For every known tag, set the appropriate attribute.
+
+        Known tags are:
+
+            :color: The user color
+            :emotes: A list of emotes
+            :subscriber: True, if subscriber
+            :turbo: True, if turbo user
+            :user_type: None, mod, staff, global_mod, admin
+
+        :param tags: a list of tags
+        :type tags: :class:`list` of :class:`Tag` | None
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        if tags is None:
+            return
+        attrmap = {'color': 'color', 'emotes': 'emotes',
+                   'subscriber': 'subscriber',
+                   'turbo': 'turbo', 'user-type': 'user_type'}
+        for t in tags:
+            attr = attrmap.get(t.name)
+            if not attr:
+                continue
+            else:
+                setattr(self, attr, t.value)
+
+    @property
+    def emotes(self, ):
+        """Return the emotes
+
+        :returns: the emotes
+        :rtype: :class:`list`
+        :raises: None
+        """
+        return self._emotes
+
+    @emotes.setter
+    def emotes(self, emotes):
+        """Set the emotes
+
+        :param emotes: the key of the emotes tag
+        :type emotes: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._emotes = [emotes]
+
+    @property
+    def subscriber(self):
+        """Return whether the message was sent from a subscriber
+
+        :returns: True, if subscriber
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self._subscriber
+
+    @subscriber.setter
+    def subscriber(self, issubscriber):
+        """Set whether the message was sent from a subscriber
+
+        :param issubsriber: '1', if subscriber
+        :type issubscriber: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._subscriber = bool(int(issubscriber))
+
+    @property
+    def turbo(self):
+        """Return whether the message was sent from a turbo user
+
+        :returns: True, if turbo
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self._turbo
+
+    @turbo.setter
+    def turbo(self, isturbo):
+        """Set whether the message was sent from a turbo user
+
+        :param issubsriber: '1', if turbo
+        :type isturbo: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._turbo = bool(int(isturbo))
+
+
 class Reactor(irc.client.Reactor):
     """Reactor that can exit the process_forever loop.
 
@@ -511,8 +646,6 @@ class IRCClient(irc.client.SimpleIRCClient):
         :param timeout: timeout for waiting on data in seconds
         :type timeout: :class:`float`
         """
-        self.chatters = {}
-        """Dict with :class:`Chatter` as values and the :data:`irc.client.Event.source` (``'nick!user@host'``) as keys."""
         self.messages = queue.Queue(maxsize=queuesize)
         """A queue which stores all private and public messages.
         Usefull for accessing messages from another thread.
@@ -596,8 +729,8 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        source = self.chatters.setdefault(event.source, Chatter(event.source))
-        m = Message(source, event.target, event.arguments[0])
+        source = Chatter(event.source)
+        m = Message3(source, event.target, event.arguments[0], event.tags)
 
         while True:
             try:
