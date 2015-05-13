@@ -382,6 +382,26 @@ class Reactor(irc.client.Reactor):
             self._looping = False
 
 
+class Reactor3(Reactor):
+    """Reactor that uses irc v3 connections
+
+    Uses the :class:`ServerConnection3` class for connections.
+    They support :class:`Event3` with tags.
+    """
+
+    def server(self, ):
+        """Creates and returns a ServerConnection
+
+        :returns: a server connection
+        :rtype: :class:`ServerConnection3`
+        :raises: None
+        """
+        c = ServerConnection3(self)
+        with self.mutex:
+            self.connections.append(c)
+        return c
+
+
 def add_serverconnection_methods(cls):
     """Add a bunch of methods to an :class:`irc.client.SimpleIRCClient`
     to send commands and messages.
@@ -456,7 +476,7 @@ class IRCClient(irc.client.SimpleIRCClient):
 
     """
 
-    reactor_class = Reactor
+    reactor_class = Reactor3
 
     def __init__(self, session, channel, queuesize=100):
         """Initialize a new irc client which can connect to the given
