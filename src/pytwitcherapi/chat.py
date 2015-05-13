@@ -5,6 +5,8 @@ import logging
 import sys
 
 import irc.client
+import irc.events
+import irc.ctcp
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -18,8 +20,214 @@ log = logging.getLogger(__name__)
 __all__ = ['IRCClient']
 
 
-_cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
-_rfc_1459_command_regexp = re.compile(_cmd_pat)
+class Tag(object):
+    """An irc v3 tag
+    """
+
+    _tagpattern = r'^((?P<vendor>[a-zA-Z0-9\.\-]+)/)?(?P<name>[^ =]+)(=(?P<value>[^ \r\n;]+))?'
+    _parse_regexp = re.compile(_tagpattern)
+
+    def __init__(self, name, value=None, vendor=None):
+        """Initialize a new tag called name
+
+        :param name: The name of the tag
+        :type name: :class:`str`
+        :param value: The value of a tag
+        :type value: :class:`str` | None
+        :param vendor: the vendor for vendor specific tags
+        :type vendor: :class:`str` | tag
+        :raises: None
+        """
+        super(Tag, self).__init__()
+        self.name = name
+        self.value = value
+        self.vendor = vendor
+
+    def __repr__(self, ):  # pragma: no cover
+        """Return the canonical string representation of the object
+
+        :returns: string representation
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return '<%s name=%s, value=%s, vendor=%s>' % (self.__class__.__name__,
+                                                      self.name, self.value, self.vendor)
+
+    def __eq__(self, other):
+        """Return True if the tags are equal
+
+        :param other: the other tag
+        :type other: :class:`Tag`
+        :returns: True if equal
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self.name == other.name and\
+            self.value == other.value and\
+            self.vendor == other.vendor
+
+    @classmethod
+    def from_str(cls, tagstring):
+        """Create a tag by parsing the tag of a message
+
+        :param tagstring: A tag string described in the irc protocol
+        :type tagstring: :class:`str`
+        :returns: A tag
+        :rtype: :class:`Tag`
+        :raises: None
+        """
+        m = cls._parse_regexp.match(tagstring)
+        return cls(name=m.group('name'), value=m.group('value'), vendor=m.group('vendor'))
+
+
+class Event3(irc.client.Event):
+    """An IRC event with tags
+    """
+
+    def __init__(self, type, source, target, arguments=None, tags=None):
+        """Initialize a new event
+
+        :param type: a string describing the event
+        :type type: :class:`str`
+        :param source: The originator of the event. NickMask or server
+        :type source: :class:`irc.client.NickMask` | :class:`str`
+        :param target: The target of the event
+        :type target: :class:`str`
+        :param arguments: Any specific event arguments
+        :type arguments: :class:`list` | None
+        :raises: None
+        """
+        super(Event3, self).__init__(type, source, target, arguments)
+        self.tags = tags
+
+
+class ServerConnection3(irc.client.ServerConnection):
+    """ServerConncetion that can handle irc v3 tags
+    """
+
+    _cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
+    _rfc_1459_command_regexp = re.compile(_cmd_pat)
+
+    def _process_line(self, line):
+        """Process the given line and handle the events
+
+        :param line: the raw message
+        :type line: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        m = self._rfc_1459_command_regexp.match(line)
+        if not m.group('tags'):
+            return super(ServerConnection3, self)._process_line(line)
+
+        tags = self._process_tags(m.group('tags'))
+        source = self._process_prefix(m.group('prefix'))
+        command = self._process_command(m.group('command'))
+        arguments = self._process_arguments(m.group('argument'))
+
+        # Translate numerics into more readable strings.
+        command = irc.events.numeric.get(command, command)
+
+        if command not in ["privmsg", "notice"]:
+            return super(ServerConnection3, self)._process_line(line)
+
+        event = Event3("all_raw_messages", self.get_server_name(),
+                       None, [line], tags=tags)
+        self._handle_event(event)
+
+        target, message = arguments[0], arguments[1]
+        messages = irc.ctcp.dequote(message)
+
+        if command == "privmsg":
+            if irc.client.is_channel(target):
+                command = "pubmsg"
+        else:
+            if irc.client.is_channel(target):
+                command = "pubnotice"
+            else:
+                command = "privnotice"
+
+        for m in messages:
+            if isinstance(m, tuple):
+                if command in ["privmsg", "pubmsg"]:
+                    command = "ctcp"
+                else:
+                    command = "ctcpreply"
+
+                m = list(m)
+                log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                          "arguments: %s", tags, command, source, target, m)
+                event = Event3(command, source, target, m, tags=tags)
+                self._handle_event(event)
+                if command == "ctcp" and m[0] == "ACTION":
+                    event = Event3("action", source, target, m[1:], tags=tags)
+                    self._handle_event(event)
+            else:
+                log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                          "arguments: %s", tags, command, source, target, [m])
+                event = Event3(command, source, target, [m], tags=tags)
+                self._handle_event(event)
+
+    def _process_tags(self, tags):
+        """Process the tags of the message
+
+        :param tags: the tags string of a message
+        :type tags: :class:`str` | None
+        :returns: list of tags
+        :rtype: :class:`list` of :class:`Tag`
+        :raises: None
+        """
+        if not tags:
+            return []
+        return [Tag.from_str(x) for x in tags.split(';')]
+
+    def _process_prefix(self, prefix):
+        """Process the prefix of the message and return the source
+
+        Sets :data:`ServerConnection3.real_server_name` if not already set.
+
+        :param prefix: The prefix string of a message
+        :type prefix: :class:`str` | None
+        :returns: The prefix wrapped in :class:`irc.client.NickMask`
+        :rtype: :class:`irc.client.NickMask` | None
+        :raises: None
+        """
+        if not prefix:
+            return None
+        if not self.real_server_name:
+            self.real_server_name = prefix
+        return irc.client.NickMask(prefix)
+
+    def _process_command(self, command):
+        """Return a lower string version of the command
+
+        :param command: the command of the message
+        :type command: :class:`str` | None
+        :returns: The lower case version
+        :rtype: :class:`str` | None
+        :raises: None
+        """
+        if not command:
+            return None
+        return command.lower()
+
+    def _process_arguments(self, arguments):
+        """Process the arguments
+
+        :param arguments: arguments string of a message
+        :type arguments: :class:`str` | None
+        :returns: A list of arguments
+        :rtype: :class:`list` of :class:`str` | None
+        :raises: None
+        """
+        if not arguments:
+            return None
+        a = arguments.split(" :", 1)
+        arglist = a[0].split()
+        if len(a) == 2:
+            arglist.append(a[1])
+        return arglist
 
 
 class Chatter(object):
