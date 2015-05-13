@@ -7,12 +7,11 @@ import pytest
 from pytwitcherapi import chat
 
 
-def reraise(preppendmsg):
-    exc_info = sys.exc_info()
+def reraise(exc_info, preppendmsg):
     if sys.version_info[0] == 2:
         # preserve stacktrace
         exc_info[1].args = (('%s\n' % preppendmsg) + exc_info[1].args[0],)
-        raise exc_info[0], exc_info[1], exc_info[2]
+        exec('raise exc_info[0], exc_info[1], exc_info[2]')
     else:
         raise exc_info[0](('%s\n' % preppendmsg) + exc_info[1].args[0]).with_traceback(exc_info[2])
 
@@ -103,7 +102,8 @@ def test_process_line_notctcp(cmd, target, event, con):
         assert c1event.target is None
         assert c1event.arguments == [l]
     except AssertionError:
-        reraise('Sent the all_raw_messages event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the all_raw_messages event incorrectly.')
 
     try:
         calls = con._handle_event.call_args_list
@@ -114,7 +114,8 @@ def test_process_line_notctcp(cmd, target, event, con):
         assert c1event.target == target
         assert c1event.arguments == ['Hallo']
     except AssertionError:
-        reraise('Sent the privmsg event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the privmsg event incorrectly.')
 
 
 @pytest.mark.parametrize('cmd,target,event', [('NOTICE', 'nick2!nick2@somehost', 'ctcpreply'),
@@ -131,7 +132,8 @@ def test_process_line_ctcp(cmd, target, event, con):
         assert c1event.target is None
         assert c1event.arguments == [l]
     except AssertionError:
-        reraise('Sent the all_raw_messages event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the all_raw_messages event incorrectly.')
 
     try:
         calls = con._handle_event.call_args_list
@@ -142,7 +144,8 @@ def test_process_line_ctcp(cmd, target, event, con):
         assert c1event.target == target
         assert c1event.arguments == ['Hallo']
     except AssertionError:
-        reraise('Sent the ctcp event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the ctcp event incorrectly.')
 
 
 @pytest.mark.parametrize('cmd,target,event', [('PRIVMSG', 'nick2!nick2@somehost', 'ctcp')])
@@ -158,7 +161,8 @@ def test_process_line_ctcpaction(cmd, target, event, con):
         assert c1event.target is None
         assert c1event.arguments == [l]
     except AssertionError:
-        reraise('Sent the all_raw_messages event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the all_raw_messages event incorrectly.')
 
     try:
         calls = con._handle_event.call_args_list
@@ -169,7 +173,8 @@ def test_process_line_ctcpaction(cmd, target, event, con):
         assert c1event.target == target
         assert c1event.arguments == ['ACTION', 'hahaha']
     except AssertionError:
-        reraise('Sent the ctcp event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the ctcp event incorrectly.')
 
     try:
         calls = con._handle_event.call_args_list
@@ -180,7 +185,8 @@ def test_process_line_ctcpaction(cmd, target, event, con):
         assert c1event.target == target
         assert c1event.arguments == ['hahaha']
     except AssertionError:
-        reraise('Sent the action event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the action event incorrectly.')
 
 
 @pytest.mark.parametrize('cmd,target,event', [('PRIVMSG', '#somechannel', 'pubmsg'),
@@ -199,7 +205,8 @@ def test_process_line_notags(cmd, target, event, con):
         assert c1event.target is None
         assert c1event.arguments == [l]
     except AssertionError:
-        reraise('Sent the all_raw_messages event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the all_raw_messages event incorrectly.')
 
     try:
         calls = con._handle_event.call_args_list
@@ -210,4 +217,5 @@ def test_process_line_notags(cmd, target, event, con):
         assert c1event.target == target
         assert c1event.arguments == ['Hallo']
     except AssertionError:
-        reraise('Sent the privmsg event incorrectly.')
+        ei = sys.exc_info()
+        reraise(ei, 'Sent the privmsg event incorrectly.')
