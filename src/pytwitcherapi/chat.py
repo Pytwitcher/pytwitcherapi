@@ -22,6 +22,12 @@ __all__ = ['IRCClient']
 
 class Tag(object):
     """An irc v3 tag
+
+    `Specification <http://ircv3.net/specs/core/message-tags-3.2.html>`_ for tags.
+    A tag will associate metadata with a message.
+
+    To get tags in twitch chat, you have to specify it in the
+    `capability negotiation<http://ircv3.net/specs/core/capability-negotiation-3.1.html>`_.
     """
 
     _tagpattern = r'^((?P<vendor>[a-zA-Z0-9\.\-]+)/)?(?P<name>[^ =]+)(=(?P<value>[^ \r\n;]+))?'
@@ -85,6 +91,11 @@ class Emote(object):
 
     An emote has an id and occurences in a message.
     So each emote is tied to a specific message.
+
+    You can get the pictures here::
+
+        ``cdn.jtvnw.net/emoticons/v1/<emoteid>/1.0``
+
     """
 
     def __init__(self, emoteid, occurences):
@@ -144,6 +155,8 @@ class Emote(object):
 
 class Event3(irc.client.Event):
     """An IRC event with tags
+
+    See `tag specification <http://ircv3.net/specs/core/message-tags-3.2.html>`_.
     """
 
     def __init__(self, type, source, target, arguments=None, tags=None):
@@ -165,6 +178,9 @@ class Event3(irc.client.Event):
 
 class ServerConnection3(irc.client.ServerConnection):
     """ServerConncetion that can handle irc v3 tags
+
+    Tags are only handled for privmsg, pubmsg, notice events.
+    All other events might be handled the old way.
     """
 
     _cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
@@ -400,11 +416,17 @@ class Message3(Message):
         """
         super(Message3, self).__init__(source, target, text)
         self.color = None
+        """the hex representation of the user color"""
         self._emotes = []
+        """list of emotes"""
         self._subscriber = False
+        """True, if the user is a subscriber"""
         self._turbo = False
+        """True, if the user is a turbo user"""
         self.user_type = None
-
+        """Turbo type. None for regular ones.
+        Other user types are mod, global_mod, staff, admin.
+        """
         self.set_tags(tags)
 
     def __eq__(self, other):
@@ -471,6 +493,9 @@ class Message3(Message):
         :rtype: None
         :raises: None
         """
+        if emotes is None:
+            self._emotes = []
+            return
         es = []
         for estr in emotes.split('/'):
             es.append(Emote.from_str(estr))
@@ -712,7 +737,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type timeout: :class:`float`
         """
         self.messages = queue.Queue(maxsize=queuesize)
-        """A queue which stores all private and public messages.
+        """A queue which stores all private and public :class:`Message3`.
         Usefull for accessing messages from another thread.
         """
 

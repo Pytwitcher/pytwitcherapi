@@ -26,7 +26,8 @@ def test_set_tags():
     assert m.turbo is True
     assert m.user_type == 'mod'
 
-    tags = [chat.Tag('display-name', 'haha')]
+    tags = [chat.Tag('display-name', 'haha'),
+            chat.Tag('emotes', None)]
     m = chat.Message3('', '', '', tags)
     assert m.color is None
     assert m.emotes == []
