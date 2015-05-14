@@ -291,6 +291,7 @@ def test_get_streams(ts, search_streams_response, channel1,
                'limit': 35,
                'offset': 10},
               {'game': game1json['name'],
+               'channel': None,
                'limit': 35,
                'offset': 10}]
 

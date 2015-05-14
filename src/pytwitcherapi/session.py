@@ -30,6 +30,8 @@ TWITCH_USHERURL = 'http://usher.twitch.tv/api/'
 TWITCH_APIURL = 'http://api.twitch.tv/api/'
 """The baseurl for the old twitch api"""
 
+TWITCH_STATUSURL = 'http://twitchstatus.com/api/status?type=chat'
+
 AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
 """Authorisation Endpoint"""
 
@@ -362,21 +364,19 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         if isinstance(game, models.Game):
             game = game.name
 
-        cs = []
+        channelnames = []
         cparam = None
         if channels:
             for c in channels:
                 if isinstance(c, models.Channel):
                     c = c.name
-                cs.append(c)
-            cparam = ','.join(cs)
+                channelnames.append(c)
+            cparam = ','.join(channelnames)
 
         params = {'limit': limit,
-                  'offset': offset}
-        if game:
-            params['game'] = game
-        if cparam:
-            params['channel'] = cparam
+                  'offset': offset,
+                  'game': game,
+                  'channel': cparam}
 
         with kraken(self):
             r = self.get('streams', params=params)
@@ -585,7 +585,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
 
         with default(self):
             try:
-                r = self.get('http://twitchstatus.com/api/status?type=chat')
+                r = self.get(TWITCH_STATUSURL)
             except requests.HTTPError:
                 log.debug('Error getting chat server status. Using random one.')
                 address = servers[0]
