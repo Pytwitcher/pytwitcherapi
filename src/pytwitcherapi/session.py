@@ -202,8 +202,33 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         self.login_thread = None
         """The thread that serves the login server"""
         self.current_user = None
-        """The currently logined user.
-        Use :meth:`TwitchSession.fetch_login_user` to set."""
+        """The currently logined user."""
+        self._token = None
+        """The oauth token"""
+
+    @property
+    def token(self, ):
+        """Return the oauth token
+
+        :returns: the token
+        :rtype: :class:`dict`
+        :raises: None
+        """
+        return self._token
+
+    @token.setter
+    def token(self, token):
+        """Set the oauth token and the current_user
+
+        :param token: the oauth token
+        :type token: :class:`dict`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._token = token
+        if token:
+            self.current_user = self.query_login_user()
 
     def request(self, method, url, **kwargs):
         """Constructs a :class:`requests.Request`, prepares it and sends it.
@@ -439,10 +464,8 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         return models.User.wrap_get_user(r)
 
     @needs_auth
-    def fetch_login_user(self, ):
-        """Set and return the currently logined user
-
-        Sets :data:`TwitchSession.current_user`
+    def query_login_user(self, ):
+        """Query and return the currently logined user
 
         :returns: The user instance
         :rtype: :class:`models.User`
@@ -450,8 +473,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         with kraken(self):
             r = self.get('user')
-        self.current_user = models.User.wrap_get_user(r)
-        return self.current_user
+        return models.User.wrap_get_user(r)
 
     def get_playlist(self, channel):
         """Return the playlist for the given channel

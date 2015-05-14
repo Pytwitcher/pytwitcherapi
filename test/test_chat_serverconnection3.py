@@ -40,8 +40,6 @@ def test_process_tags(tags, expected, con):
 def test_process_prefix(prefixstr, expected, con):
     prefix = con._process_prefix(prefixstr)
     assert prefix == expected
-    if prefix:
-        assert con.real_server_name == prefixstr
 
 
 def test_process_command(con):

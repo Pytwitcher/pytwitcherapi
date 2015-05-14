@@ -37,9 +37,15 @@ def ts(mock_session):
 
 
 @pytest.fixture(scope='function')
-def authts(ts, auth_redirect_uri):
+def authts(ts, auth_redirect_uri, user1):
+    def query_login_user():
+        return user1
+
+    oldquery = ts.query_login_user
+    ts.query_login_user = query_login_user
     uri = auth_redirect_uri.replace('http://', 'https://')
     ts.token_from_fragment(uri)
+    ts.query_login_user = oldquery
     return ts
 
 
@@ -330,6 +336,11 @@ def user1json():
          'display_name': 'test_user1',
          'bio': 'test bio woo I am a test user'}
     return u
+
+
+@pytest.fixture(scope="function")
+def user1(user1json):
+    return models.User.wrap_json(user1json)
 
 
 @pytest.fixture(scope="function")
