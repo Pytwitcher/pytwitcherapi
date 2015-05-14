@@ -197,10 +197,14 @@ class ServerConnection3(irc.client.ServerConnection):
         """
         m = self._rfc_1459_command_regexp.match(line)
 
+        prefix = m.group('prefix')
         tags = self._process_tags(m.group('tags'))
-        source = self._process_prefix(m.group('prefix'))
+        source = self._process_prefix(prefix)
         command = self._process_command(m.group('command'))
         arguments = self._process_arguments(m.group('argument'))
+
+        if not self.real_server_name:
+            self.real_server_name = prefix
 
         # Translate numerics into more readable strings.
         command = irc.events.numeric.get(command, command)
@@ -261,8 +265,6 @@ class ServerConnection3(irc.client.ServerConnection):
     def _process_prefix(self, prefix):
         """Process the prefix of the message and return the source
 
-        Sets :data:`ServerConnection3.real_server_name` if not already set.
-
         :param prefix: The prefix string of a message
         :type prefix: :class:`str` | None
         :returns: The prefix wrapped in :class:`irc.client.NickMask`
@@ -271,8 +273,7 @@ class ServerConnection3(irc.client.ServerConnection):
         """
         if not prefix:
             return None
-        if not self.real_server_name:
-            self.real_server_name = prefix
+
         return irc.client.NickMask(prefix)
 
     def _process_command(self, command):

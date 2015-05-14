@@ -608,7 +608,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :rtype: :class:`str`
         :raises: None
         """
-        best = None
+        best = servers[0]  # In case we sind no match with any status
         stats.sort()  # gets sorted for performance
         for stat in stats:
             for server in servers:
@@ -623,7 +623,4 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
                 # already found one, so no need to check the other
                 # statuses, which are worse
                 break
-        else:
-            # No chatserver matched one of the stats, just pick one
-            best = servers[0]
         return best
