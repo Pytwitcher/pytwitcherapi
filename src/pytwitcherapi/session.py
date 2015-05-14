@@ -590,24 +590,39 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
                 log.debug('Error getting chat server status. Using random one.')
                 address = servers[0]
             else:
-                reference = sorted([chat.ChatServerStatus(**d) for d in r.json()])
-                address = None
-                for r in reference:
-                    for s in servers:
-                        if s == r:
-                            # found a chatserver that has the same address
-                            # than one of the chatserverstats.
-                            # since the stats are sorted for performance
-                            # the first hit is the best, thus break
-                            address = s
-                            break
-                    if address:
-                        # already found one, so no need to check the other
-                        # refernces, which are worse
-                        break
-                else:
-                    # No chatserver matched one of the stats, just pick one
-                    address = servers[0]
+                stats = [chat.ChatServerStatus(**d) for d in r.json()]
+                address = self._find_best_chat_server(servers, stats)
 
         server, port = address.split(':')
         return server, int(port)
+
+    def _find_best_chat_server(self, servers, stats):
+        """Find the best from servers by comparing with the stats
+
+        :param servers: a list if server adresses, e.g. ['0.0.0.0:80']
+        :type servers: :class:`list` of :class:`str`
+        :param stats: list of server statuses
+        :type stats: :class:`list` of :class:`chat.ChatServerStatus`
+        :returns: the best server adress
+        :rtype: :class:`str`
+        :raises: None
+        """
+        best = None
+        stats.sort()  # gets sorted for performance
+        for stat in stats:
+            for server in servers:
+                if server == stat:
+                    # found a chatserver that has the same address
+                    # than one of the chatserverstats.
+                    # since the stats are sorted for performance
+                    # the first hit is the best, thus break
+                    best = server
+                    break
+            if best:
+                # already found one, so no need to check the other
+                # statuses, which are worse
+                break
+        else:
+            # No chatserver matched one of the stats, just pick one
+            best = servers[0]
+        return best
