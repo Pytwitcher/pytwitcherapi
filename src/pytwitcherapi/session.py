@@ -596,7 +596,8 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         server, port = address.split(':')
         return server, int(port)
 
-    def _find_best_chat_server(self, servers, stats):
+    @staticmethod
+    def _find_best_chat_server(servers, stats):
         """Find the best from servers by comparing with the stats
 
         :param servers: a list if server adresses, e.g. ['0.0.0.0:80']
