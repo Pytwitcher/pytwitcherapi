@@ -196,19 +196,16 @@ class ServerConnection3(irc.client.ServerConnection):
         :raises: None
         """
         m = self._rfc_1459_command_regexp.match(line)
-
         prefix = m.group('prefix')
         tags = self._process_tags(m.group('tags'))
         source = self._process_prefix(prefix)
         command = self._process_command(m.group('command'))
         arguments = self._process_arguments(m.group('argument'))
-
         if not self.real_server_name:
             self.real_server_name = prefix
 
         # Translate numerics into more readable strings.
         command = irc.events.numeric.get(command, command)
-
         if command not in ["privmsg", "notice"]:
             return super(ServerConnection3, self)._process_line(line)
 
@@ -218,7 +215,23 @@ class ServerConnection3(irc.client.ServerConnection):
 
         target, message = arguments[0], arguments[1]
         messages = irc.ctcp.dequote(message)
+        command = self._resolve_command(command, target)
+        for m in messages:
+            self._handle_message(tags, source, command, target, m)
 
+    def _resolve_command(self, command, target):
+        """Get the correct event for the command
+
+        Only for 'privmsg' and 'notice' commands.
+
+        :param command: The command string
+        :type command: :class:`str`
+        :param target: either a user or a channel
+        :type target: :class:`str`
+        :returns: the correct event type
+        :rtype: :class:`str`
+        :raises: None
+        """
         if command == "privmsg":
             if irc.client.is_channel(target):
                 command = "pubmsg"
@@ -227,27 +240,44 @@ class ServerConnection3(irc.client.ServerConnection):
                 command = "pubnotice"
             else:
                 command = "privnotice"
+        return command
 
-        for m in messages:
-            if isinstance(m, tuple):
-                if command in ["privmsg", "pubmsg"]:
-                    command = "ctcp"
-                else:
-                    command = "ctcpreply"
+    def _handle_message(self, tags, source, command, target, message):
+        """Construct the correct events and handle them
 
-                m = list(m)
-                log.debug("tags: %s, command: %s, source: %s, target: %s, "
-                          "arguments: %s", tags, command, source, target, m)
-                event = Event3(command, source, target, m, tags=tags)
-                self._handle_event(event)
-                if command == "ctcp" and m[0] == "ACTION":
-                    event = Event3("action", source, target, m[1:], tags=tags)
-                    self._handle_event(event)
+        :param tags: the tags of the message
+        :type tags: :class:`list` of :class:`Tag`
+        :param source: the sender of the message
+        :type source: :class:`str`
+        :param command: the event type
+        :type command: :class:`str`
+        :param target: the target of the message
+        :type target: :class:`str`
+        :param message: the content
+        :type message: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        if isinstance(message, tuple):
+            if command in ["privmsg", "pubmsg"]:
+                command = "ctcp"
             else:
-                log.debug("tags: %s, command: %s, source: %s, target: %s, "
-                          "arguments: %s", tags, command, source, target, [m])
-                event = Event3(command, source, target, [m], tags=tags)
+                command = "ctcpreply"
+
+            message = list(message)
+            log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                      "arguments: %s", tags, command, source, target, message)
+            event = Event3(command, source, target, message, tags=tags)
+            self._handle_event(event)
+            if command == "ctcp" and message[0] == "ACTION":
+                event = Event3("action", source, target, message[1:], tags=tags)
                 self._handle_event(event)
+        else:
+            log.debug("tags: %s, command: %s, source: %s, target: %s, "
+                      "arguments: %s", tags, command, source, target, [message])
+            event = Event3(command, source, target, [message], tags=tags)
+            self._handle_event(event)
 
     def _process_tags(self, tags):
         """Process the tags of the message
