@@ -15,7 +15,7 @@ def assert_object_equals_dict(attributemap, obj, d):
     :rtype: None
     :raises: :class:`AssertionError`
     """
-    for attr, key in attributemap.iteritems():
+    for attr, key in attributemap.items():
         assert getattr(obj, attr) == d.get(key)
 
 

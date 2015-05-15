@@ -20,7 +20,7 @@ def assert_message_attrs(message, **kwargs):
     :param kwargs: keyword is the attribute to check,
                    value the expected attribute value
     """
-    for attr, expected in kwargs.iteritems():
+    for attr, expected in kwargs.items():
         messagevalue = getattr(message, attr)
         assert messagevalue == expected
 
