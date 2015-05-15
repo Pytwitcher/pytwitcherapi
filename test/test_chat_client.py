@@ -76,25 +76,27 @@ def ircserver(request):
 
 
 @pytest.fixture(scope='function')
-def ircclient(ircserver, authts, channel1):
+def mock_get_chat_server(ircserver, authts):
     def get_chat_server(channel):
         return ircserver.socket.getsockname()
     authts.get_chat_server = get_chat_server
     user = mock.Mock()
-    user.name = 'testuser'
     authts.current_user = user
+    return authts
+
+
+@pytest.fixture(scope='function')
+def ircclient(ircserver, mock_get_chat_server, channel1):
+    authts = mock_get_chat_server
+    authts.current_user.name = 'testuser'
     client = IRCChatClient(authts, channel1)
     return client
 
 
 @pytest.fixture(scope='function')
-def ircclient2(ircserver, authts, channel1):
-    def get_chat_server(channel):
-        return ircserver.socket.getsockname()
-    authts.get_chat_server = get_chat_server
-    user = mock.Mock()
-    user.name = 'testuser2'
-    authts.current_user = user
+def ircclient2(ircserver, mock_get_chat_server, channel1):
+    authts = mock_get_chat_server
+    authts.current_user.name = 'testuser2'
     client = IRCChatClient(authts, channel1, queuesize=10)
     return client
 
@@ -133,22 +135,26 @@ def ircthreads(request, ircserver, ircclient):
     t2.start()
 
 
-@pytest.mark.timeout(10)
-def test_client(ircserver, ircclient, ircthreads, access_token):
+def simulate_client_server_interaction(ircserver, ircclient):
+    """Wait for the client to join, then send messages, then quit."""
     while not ircclient.joined:
-        time.sleep(0.1)
+        time.sleep(0)
 
     ircclient.send_msg('hahaha')
     ircclient.send_msg('hihihi')
     # wait till messages have arrived at the server
-    while not IRCServerClient.messages:
-        time.sleep(0.1)
+    while not len(IRCServerClient.messages) == 2:
+        time.sleep(0)
 
     ircclient.shutdown()
     # wait till the clien (in other thread) is actually shut down
     while not IRCServerClient.quited:
-        time.sleep(0.1)
+        time.sleep(0)
 
+
+@pytest.mark.timeout(10)
+def test_client(ircserver, ircclient, ircthreads, access_token):
+    simulate_client_server_interaction(ircserver, ircclient)
     testuser = 'testuser!testuser@localhost'
     expectedpw = ('None!None@localhost', 'oauth:%s' % access_token)
     expectedjoin = (testuser, '#test_channel')
@@ -162,7 +168,25 @@ def test_client(ircserver, ircclient, ircthreads, access_token):
 
 def test_disconnect(ircserver, ircclient):
     ircclient.channel = None
-    assert not ircclient.connection.connected
+    assert not ircclient.connection.connected, 'The client should disconnect the connection, \
+when you set the channel to None'
+
+
+def assert_client_got_message(client, message):
+    """Assert that the client has a message in the message queue,
+    that is eqaul to the given one
+
+    :param client: an irc client
+    :type client: :class:`chat.IRCClient`
+    :param message: the message to test against
+    :type message: :class:`chat.Message`
+    :raises: :class:`AssertionError`
+    """
+    try:
+        msg = client.messages.get(timeout=1)
+        assert msg == message
+    except queue.Empty:
+        raise AssertionError('ircclient did not store the message in the message queue')
 
 
 @pytest.mark.timeout(10)
@@ -176,11 +200,19 @@ def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
 
     for m in [m1, m2]:
         ircclient2.send_msg(m.text)
-        try:
-            msg = ircclient.messages.get(timeout=1)
-            assert msg == m
-        except queue.Empty:
-            raise AssertionError('ircclient did not store the message in the message queue')
+        assert_client_got_message(ircclient, m)
+
+
+def _send_messages(client):
+    """Send 15 messages. Text is the index of the message.
+    Send 7 private to testuser2 and 8 public ones to #test_channel.
+    """
+    # send 7 private
+    for i in range(7):
+        client.privmsg('testuser2', '%i' % i)
+    # the rest public
+    for i in range(7, 15):
+        client.privmsg('#test_channel', '%i' % i)
 
 
 @pytest.mark.timeout(10)  # if it times out, maybe the store_message method uses a blocking put
@@ -188,18 +220,13 @@ def test_message_queue_full(ircclient, ircclient2, ircthreads, ircclient2thread)
     while not ircclient2.joined:
         time.sleep(0)
 
-    # send 7 private
-    for i in range(7):
-        ircclient.privmsg('testuser2', '%i' % i)
-    # the rest public
-    for i in range(7, 15):
-        ircclient.privmsg('#test_channel', '%i' % i)
+    _send_messages(ircclient)
 
     while ircclient2.messagecount != 15:
         time.sleep(0)
 
-    assert ircclient2.messages.full()
-    assert ircclient2.messages.qsize() == 10
+    assert ircclient2.messages.full(), '15 messages have been sent. The queue should be full.'
+    assert ircclient2.messages.qsize() == 10, '15 messages have been sent, but the queue should have a maxsize of 10'
     # assert only the last ten messages are in the queue
     for i in range(5, 15):
         assert ircclient2.messages.get(timeout=1).text == '%i' % i,\
