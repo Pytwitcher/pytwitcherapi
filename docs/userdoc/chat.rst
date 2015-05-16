@@ -33,6 +33,8 @@ Change ``input`` to ``raw_input`` for python 2::
           client.shutdown()
           t.join()
 
+.. important:: The connection will wait/block if you send more messages than
+	       twitch allows. See :class:`pytwitcherapi.chat.ServerConnection3`.
 
 You can make the client handle different IRC events. Subclass the client and create a method ``on_<eventtype>``.
 For example to greet everyone who joins an IRC channel::
