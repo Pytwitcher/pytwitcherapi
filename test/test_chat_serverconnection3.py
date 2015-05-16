@@ -1,3 +1,5 @@
+import time
+
 import irc.client
 import mock
 import pytest
@@ -151,3 +153,31 @@ def test_process_line_actionmsg(con, actionmsgargs):
     line, cmd, source, target, expectedevents = actionmsgargs
     events = _process_line(con, line)
     assert events == expectedevents, 'Did not call _handle_event with the right events or order'
+
+
+@pytest.fixture(scope='function')
+def mock_time_module(monkeypatch):
+    m = mock.Mock()
+    monkeypatch.setattr(chat, 'time', m)
+
+
+@pytest.fixture(scope='function')
+def mock_time(monkeypatch):
+    m = mock.Mock()
+    m.side_effect = range(50)
+    monkeypatch.setattr(chat.time, 'time', m)
+    return m
+
+
+def test_wait_for_limit(mock_time):
+    con = chat.ServerConnection3(None)
+    for i in range(20):
+        waittime = con.get_waittime()
+        assert waittime == 0, 'The first 20 messages should not have to wait'
+    for i in range(20):
+        waittime = con.get_waittime()
+        # assert we waited 11 seconds
+        # because we send 20 messages in 1 second intervals
+        # and the limit is 20 messages in 30 seconds
+        # one second is buffer
+        assert waittime == 11

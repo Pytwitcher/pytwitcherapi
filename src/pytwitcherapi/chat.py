@@ -1,8 +1,10 @@
 """IRC client for interacting with the chat of a channel."""
-import re  # I got a bad feeling about this
+import collections
 import functools
 import logging
+import re  # I got a bad feeling about this
 import sys
+import time
 
 import irc.client
 import irc.events
@@ -175,7 +177,7 @@ class Event3(irc.client.Event):
         super(Event3, self).__init__(type, source, target, arguments)
         self.tags = tags
 
-    def __repr__(self, ):  # pragma: no over
+    def __repr__(self, ):  # pragma: no cover
         """Return a canonical representation of the object
 
         :rtype: :class:`str`
@@ -209,6 +211,65 @@ class ServerConnection3(irc.client.ServerConnection):
 
     _cmd_pat = "^(@(?P<tags>[^ ]+) +)?(:(?P<prefix>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
     _rfc_1459_command_regexp = re.compile(_cmd_pat)
+
+    def __init__(self, reactor, msglimit=20, limitinterval=30):
+        """Initialize a connection that has a limit to sending messages
+
+        :param reactor: the reactor of the connection
+        :type reactor: :class:`irc.client.Reactor`
+        :param msglimit: the maximum number of messages to send in limitinterval
+        :type msglimit: :class:`int`
+        :param limitinterval: the timeframe in seconds in which you can only send
+                              as many messages as in msglimit
+        :type limitinterval: :class:`int`
+        :raises: None
+        """
+        super(ServerConnection3, self).__init__(reactor)
+        self.sentmessages = collections.deque(maxlen=msglimit + 1)
+        """A queue with timestamps form the last sent messages.
+        So we can track if we send to many messages."""
+        self.limitinterval = limitinterval
+        """the timeframe in seconds in which you can only send
+        as many messages as in :data:`ServerConncetion3msglimit`"""
+
+    def get_waittime(self):
+        """Return the appropriate time to wait, if we sent too many messages
+
+        :returns: the time to wait in seconds
+        :rtype: :class:`float`
+        :raises: None
+        """
+        now = time.time()
+        self.sentmessages.appendleft(now)
+        if len(self.sentmessages) == self.sentmessages.maxlen:
+            # check if the oldes message is older than
+            # limited by self.limitinterval
+            oldest = self.sentmessages[-1]
+            waittime = self.limitinterval - (now - oldest)
+            if waittime > 0:
+                return waittime + 1  # add a little buffer
+        return 0
+
+    def send_raw(self, string):
+        """Send raw string to the server.
+
+        The string will be padded with appropriate CR LF.
+        If too many messages are sent, this will call
+        :func:`time.sleep` until it is allowed to send messages again.
+
+        :param string: the raw string to send
+        :type string: :class:`str`
+        :returns: None
+        :raises: :class:`irc.client.InvalidCharacters`,
+                 :class:`irc.client.MessageTooLong`,
+                 :class:`irc.client.ServerNotConnectedError`
+        """
+        waittime = self.get_waittime()
+        if waittime:
+            log.debug('Sent too many messages. Waiting %s seconds',
+                      waittime)
+            time.sleep(waittime)
+        return super(ServerConnection3, self).send_raw(string)
 
     def _process_line(self, line):
         """Process the given line and handle the events

@@ -63,6 +63,13 @@ class IRCServerClient(irc.server.IRCClient):
 
 
 @pytest.fixture(scope='function')
+def mock_get_waittime(monkeypatch):
+    m = mock.Mock()
+    m.return_value = 0
+    monkeypatch.setattr(chat.ServerConnection3, 'get_waittime', m)
+
+
+@pytest.fixture(scope='function')
 def ircserver(request):
     ircserver = irc.server.IRCServer(('0.0.0.0', 0), IRCServerClient)
 
@@ -86,7 +93,7 @@ def mock_get_chat_server(ircserver, authts):
 
 
 @pytest.fixture(scope='function')
-def ircclient(ircserver, mock_get_chat_server, channel1):
+def ircclient(ircserver, mock_get_chat_server, channel1, mock_get_waittime):
     authts = mock_get_chat_server
     authts.current_user.name = 'testuser'
     client = IRCChatClient(authts, channel1)
@@ -94,7 +101,7 @@ def ircclient(ircserver, mock_get_chat_server, channel1):
 
 
 @pytest.fixture(scope='function')
-def ircclient2(ircserver, mock_get_chat_server, channel1):
+def ircclient2(ircserver, mock_get_chat_server, channel1, mock_get_waittime):
     authts = mock_get_chat_server
     authts.current_user.name = 'testuser2'
     client = IRCChatClient(authts, channel1, queuesize=10)
@@ -232,3 +239,34 @@ def test_message_queue_full(ircclient, ircclient2, ircthreads, ircclient2thread)
         assert ircclient2.messages.get(timeout=1).text == '%i' % i,\
             "The message queue should only have the last ten messages.\
  So the messages should be '5', '6'... until '14'"
+
+
+@pytest.fixture(scope='function')
+def mock_time_sleep(monkeypatch):
+    timemock = mock.Mock()
+    sleepmock = mock.Mock()
+    timemock.sleep = sleepmock
+    monkeypatch.setattr(chat, 'time', timemock)
+    return sleepmock
+
+
+@pytest.fixture(scope='function')
+def mock_get_waittime2(monkeypatch):
+    m = mock.Mock()
+    m.return_value = 10
+    monkeypatch.setattr(chat.ServerConnection3, 'get_waittime', m)
+    return m
+
+
+@pytest.fixture(scope='function')
+def mock_send_raw(monkeypatch):
+    m = mock.Mock()
+    monkeypatch.setattr(irc.client.ServerConnection, 'send_raw', m)
+    return m
+
+
+def test_send_raw_wait(mock_time_sleep, mock_get_waittime2, mock_send_raw):
+    con = chat.ServerConnection3(None)
+    con.send_raw('Test')
+    mock_time_sleep.assert_called_with(10)
+    mock_send_raw.assert_called_with('Test')
