@@ -175,6 +175,30 @@ class Event3(irc.client.Event):
         super(Event3, self).__init__(type, source, target, arguments)
         self.tags = tags
 
+    def __repr__(self, ):
+        """Return a canonical representation of the object
+
+        :rtype: :class:`str`
+        :raises: None
+        """
+        args = (self.__class__.__name__, self.type, self.source, self.target, self.arguments, self.tags)
+        return '<%s %s, %s to %s, %s, tags: %s>' % args
+
+    def __eq__(self, other):
+        """Return True, if the events share equal attributes
+
+        :param other: the other event to compare
+        :type other: :class:`Event3`
+        :returns: True, if equal
+        :rtype: :class:`bool`
+        :raises: None
+        """
+        return self.type == other.type and\
+            self.source == other.source and\
+            self.target == other.target and\
+            self.arguments == other.arguments and\
+            self.tags == other.tags
+
 
 class ServerConnection3(irc.client.ServerConnection):
     """ServerConncetion that can handle irc v3 tags
