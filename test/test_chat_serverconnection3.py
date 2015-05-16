@@ -53,19 +53,36 @@ msg1 = ':nick!ident@host.com PRIVMSG me :Hello'
 msg2 = 'USER storax_dev 0 * :storax_dev'
 msg3 = '@color=#0000FF;emotes=16156:0-7;subscriber=1;turbo=0;user_type=mod \
 :joe_user!joe_user@joe_user.tmi.twitch.tv PRIVMSG #somerandomchannel:lirikMLG is awesome!'
-
-
-@pytest.mark.parametrize('message,tags,prefix,command,argument', [
+rfc_regex_params = [
     (msg1, None, 'nick!ident@host.com', 'PRIVMSG', ' me :Hello'),
     (msg2, None, None, 'USER', ' storax_dev 0 * :storax_dev'),
     (msg3, 'color=#0000FF;emotes=16156:0-7;subscriber=1;turbo=0;user_type=mod',
-     'joe_user!joe_user@joe_user.tmi.twitch.tv', 'PRIVMSG', ' #somerandomchannel:lirikMLG is awesome!')])
-def test_rfc_regex(message, tags, prefix, command, argument):
+     'joe_user!joe_user@joe_user.tmi.twitch.tv', 'PRIVMSG',
+     ' #somerandomchannel:lirikMLG is awesome!')]
+
+
+@pytest.mark.parametrize('message,tags,prefix,command,argument', rfc_regex_params)
+def test_rfc_regex_prefix(message, tags, prefix, command, argument):
     m = chat.ServerConnection3._rfc_1459_command_regexp.match(message)
-    assert m.group('prefix') == prefix
-    assert m.group('command') == command
-    assert m.group('argument') == argument
-    assert m.group('tags') == tags
+    assert m.group('prefix') == prefix, 'Parsing prefix incorrect.'
+
+
+@pytest.mark.parametrize('message,tags,prefix,command,argument', rfc_regex_params)
+def test_rfc_regex_command(message, tags, prefix, command, argument):
+    m = chat.ServerConnection3._rfc_1459_command_regexp.match(message)
+    assert m.group('command') == command, 'Parsing command incorrect.'
+
+
+@pytest.mark.parametrize('message,tags,prefix,command,argument', rfc_regex_params)
+def test_rfc_regex_argument(message, tags, prefix, command, argument):
+    m = chat.ServerConnection3._rfc_1459_command_regexp.match(message)
+    assert m.group('argument') == argument, 'Parsing argument incorrect.'
+
+
+@pytest.mark.parametrize('message,tags,prefix,command,argument', rfc_regex_params)
+def test_rfc_regex_tags(message, tags, prefix, command, argument):
+    m = chat.ServerConnection3._rfc_1459_command_regexp.match(message)
+    assert m.group('tags') == tags, 'Parsing tags incorrect.'
 
 
 def test_process_line_other_cmd(con):

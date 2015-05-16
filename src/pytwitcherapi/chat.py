@@ -175,7 +175,7 @@ class Event3(irc.client.Event):
         super(Event3, self).__init__(type, source, target, arguments)
         self.tags = tags
 
-    def __repr__(self, ):
+    def __repr__(self, ):  # pragma: no over
         """Return a canonical representation of the object
 
         :rtype: :class:`str`
