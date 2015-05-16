@@ -1,6 +1,6 @@
 """IRC client for interacting with the chat of a channel."""
 import re  # I got a bad feeling about this
-import functools  # nopep8
+import functools
 import logging
 import sys
 
@@ -658,6 +658,24 @@ class Reactor3(Reactor):
         return c
 
 
+def _wrap_execute_delayed(funcname):
+    """Warp the given method, so it gets executed by the reactor
+
+    The returned function should be assigned to a :class:`irc.client.SimpleIRCClient` class.
+
+    :param funcname: the name of a :class:`irc.client.ServerConnection` method
+    :type funcname: :class:`str`
+    :returns: a new function, that executes the given one via :class:`irc.client.Reactor.execute_delayed`
+    :raises: None
+    """
+    def method(self, *args, **kwargs):
+        f = getattr(self.connection, funcname)
+        p = functools.partial(f, *args, **kwargs)
+        self.reactor.execute_delayed(0, p)
+    method.__name__ = funcname
+    return method
+
+
 def add_serverconnection_methods(cls):
     """Add a bunch of methods to an :class:`irc.client.SimpleIRCClient`
     to send commands and messages.
@@ -683,14 +701,10 @@ def add_serverconnection_methods(cls):
                'stats', 'time', 'topic', 'trace', 'user', 'userhost',
                'users', 'version', 'wallops', 'who', 'whois', 'whowas']
     for m in methods:
-        exec("""def method(self, *args, **kwargs):
-    f = getattr(self.connection, %r)
-    p = functools.partial(f, *args, **kwargs)
-    self.reactor.execute_delayed(0, p)""" % m, globals())
+        method = _wrap_execute_delayed(m)
         f = getattr(irc.client.ServerConnection, m)
-        method.__name__ = m  # nopep8
-        method.__doc__ = f.__doc__  # nopep8
-        setattr(cls, method.__name__, method)  # nopep8
+        method.__doc__ = f.__doc__
+        setattr(cls, method.__name__, method)
 
 
 class IRCClient(irc.client.SimpleIRCClient):
