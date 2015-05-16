@@ -38,8 +38,8 @@ To make it simple for the user, here is what should be done for authentication:
     :meth:`pytwitcherapi.TwitchSession.authorized`::
 
       assert ts.authorized, "Authorization failed! Did the user allow it?"
+      print "Login User: %s" % ts.current_user
 
   - Now you can call methods that require authentication::
 
-      logined user = ts.fetch_login_user()
       streams = ts.followed_streams()

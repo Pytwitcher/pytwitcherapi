@@ -30,6 +30,8 @@ TWITCH_USHERURL = 'http://usher.twitch.tv/api/'
 TWITCH_APIURL = 'http://api.twitch.tv/api/'
 """The baseurl for the old twitch api"""
 
+TWITCH_STATUSURL = 'http://twitchstatus.com/api/status?type=chat'
+
 AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
 """Authorisation Endpoint"""
 
@@ -164,7 +166,97 @@ def needs_auth(meth):
     return wrapped
 
 
-class TwitchSession(requests_oauthlib.OAuth2Session):
+class OAuthSession(requests_oauthlib.OAuth2Session):
+    """Session with oauth2 support.
+
+    You can still use http requests.
+    """
+
+    def __init__(self):
+        """Initialize a new oauth session
+
+        :raises: None
+        """
+        client = oauth.TwitchOAuthClient(client_id=CLIENT_ID)
+        super(OAuthSession, self).__init__(client_id=CLIENT_ID,
+                                           client=client,
+                                           scope=SCOPES,
+                                           redirect_uri=constants.REDIRECT_URI)
+        self.login_server = None
+        """The server that handles the login redirect"""
+        self.login_thread = None
+        """The thread that serves the login server"""
+
+    def request(self, method, url, **kwargs):
+        """Constructs a :class:`requests.Request`, prepares it and sends it.
+        Raises HTTPErrors by default.
+
+        :param method: method for the new :class:`Request` object.
+        :type method: :class:`str`
+        :param url: URL for the new :class:`Request` object.
+        :type url: :class:`str`
+        :param kwargs: keyword arguments of :meth:`requests.Session.request`
+        :returns: a resonse object
+        :rtype: :class:`requests.Response`
+        :raises: :class:`requests.HTTPError`
+        """
+        if oauthlib.oauth2.is_secure_transport(url):
+            m = super(OAuthSession, self).request
+        else:
+            m = super(requests_oauthlib.OAuth2Session, self).request
+        log.debug("%s \"%s\" with %s", method, url, kwargs)
+        response = m(method, url, **kwargs)
+        response.raise_for_status()
+        return response
+
+    def start_login_server(self, ):
+        """Start a server that will get a request from a user logging in.
+
+        This uses the Implicit Grant Flow of OAuth2. The user is asked
+        to login to twitch and grant PyTwitcher authorization.
+        Once the user agrees, he is redirected to an url.
+        This server will respond to that url and get the oauth token.
+
+        The server serves in another thread. To shut him down, call
+        :meth:`TwitchSession.shutdown_login_server`.
+
+        This sets the :data:`TwitchSession.login_server`,
+        :data:`TwitchSession.login_thread` variables.
+
+        :returns: The created server
+        :rtype: :class:`BaseHTTPServer.HTTPServer`
+        :raises: None
+        """
+        self.login_server = oauth.LoginServer(session=self)
+        target = self.login_server.serve_forever
+        self.login_thread = threading.Thread(target=target)
+        self.login_thread.setDaemon(True)
+        log.debug('Starting login server thread.')
+        self.login_thread.start()
+
+    def shutdown_login_server(self, ):
+        """Shutdown the login server and thread
+
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        log.debug('Shutting down the login server thread.')
+        self.login_server.shutdown()
+        self.login_server.server_close()
+        self.login_thread.join()
+
+    def get_auth_url(self, ):
+        """Return the url for the user to authorize PyTwitcher
+
+        :returns: The url the user should visit to authorize PyTwitcher
+        :rtype: :class:`str`
+        :raises: None
+        """
+        return self.authorization_url(AUTHORIZATION_BASE_URL)[0]
+
+
+class TwitchSession(OAuthSession):
     """Session that stores a baseurl that will be prepended for every request
 
     You can use the contextmanagers :func:`kraken`, :func:`usher` and
@@ -188,24 +280,43 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
 
         :raises: None
         """
-        client = oauth.TwitchOAuthClient(client_id=CLIENT_ID)
-        super(TwitchSession, self).__init__(client_id=CLIENT_ID,
-                                            client=client,
-                                            scope=SCOPES,
-                                            redirect_uri=constants.REDIRECT_URI)
+        super(TwitchSession, self).__init__()
         self.baseurl = ''
         """The baseurl that gets prepended to every request url"""
-        self.login_server = None
-        """The server that handles the login redirect"""
-        self.login_thread = None
-        """The thread that serves the login server"""
         self.current_user = None
-        """The currently logined user.
-        Use :meth:`TwitchSession.fetch_login_user` to set."""
+        """The currently logined user."""
+        self._token = None
+        """The oauth token"""
+
+    @property
+    def token(self, ):
+        """Return the oauth token
+
+        :returns: the token
+        :rtype: :class:`dict`
+        :raises: None
+        """
+        return self._token
+
+    @token.setter
+    def token(self, token):
+        """Set the oauth token and the current_user
+
+        :param token: the oauth token
+        :type token: :class:`dict`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        self._token = token
+        if token:
+            self.current_user = self.query_login_user()
 
     def request(self, method, url, **kwargs):
         """Constructs a :class:`requests.Request`, prepares it and sends it.
         Raises HTTPErrors by default.
+
+        Instead of just using the url, uses :data:`TwitchSession.baseurl` + url.
 
         :param method: method for the new :class:`Request` object.
         :type method: :class:`str`
@@ -217,14 +328,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         :raises: :class:`requests.HTTPError`
         """
         fullurl = self.baseurl + url if self.baseurl else url
-        if oauthlib.oauth2.is_secure_transport(fullurl):
-            m = super(TwitchSession, self).request
-        else:
-            m = super(requests_oauthlib.OAuth2Session, self).request
-        log.debug("%s \"%s\" with %s", method, fullurl, kwargs)
-        r = m(method, fullurl, **kwargs)
-        r.raise_for_status()
-        return r
+        return super(TwitchSession, self).request(method, fullurl, **kwargs)
 
     def fetch_viewers(self, game):
         """Query the viewers and channels of the given game and
@@ -362,21 +466,19 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         if isinstance(game, models.Game):
             game = game.name
 
-        cs = []
+        channelnames = []
         cparam = None
         if channels:
             for c in channels:
                 if isinstance(c, models.Channel):
                     c = c.name
-                cs.append(c)
-            cparam = ','.join(cs)
+                channelnames.append(c)
+            cparam = ','.join(channelnames)
 
         params = {'limit': limit,
-                  'offset': offset}
-        if game:
-            params['game'] = game
-        if cparam:
-            params['channel'] = cparam
+                  'offset': offset,
+                  'game': game,
+                  'channel': cparam}
 
         with kraken(self):
             r = self.get('streams', params=params)
@@ -439,10 +541,8 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         return models.User.wrap_get_user(r)
 
     @needs_auth
-    def fetch_login_user(self, ):
-        """Set and return the currently logined user
-
-        Sets :data:`TwitchSession.current_user`
+    def query_login_user(self, ):
+        """Query and return the currently logined user
 
         :returns: The user instance
         :rtype: :class:`models.User`
@@ -450,8 +550,7 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         """
         with kraken(self):
             r = self.get('user')
-        self.current_user = models.User.wrap_get_user(r)
-        return self.current_user
+        return models.User.wrap_get_user(r)
 
     def get_playlist(self, channel):
         """Return the playlist for the given channel
@@ -520,51 +619,6 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
             r = self.get('channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
 
-    def start_login_server(self, ):
-        """Start a server that will get a request from a user logging in.
-
-        This uses the Implicit Grant Flow of OAuth2. The user is asked
-        to login to twitch and grant PyTwitcher authorization.
-        Once the user agrees, he is redirected to an url.
-        This server will respond to that url and get the oauth token.
-
-        The server serves in another thread. To shut him down, call
-        :meth:`TwitchSession.shutdown_login_server`.
-
-        This sets the :data:`TwitchSession.login_server`,
-        :data:`TwitchSession.login_thread` variables.
-
-        :returns: The created server
-        :rtype: :class:`BaseHTTPServer.HTTPServer`
-        :raises: None
-        """
-        self.login_server = oauth.LoginServer(session=self)
-        self.login_thread = threading.Thread(target=self.login_server.serve_forever)
-        self.login_thread.setDaemon(True)
-        log.debug('Starting login server thread.')
-        self.login_thread.start()
-
-    def shutdown_login_server(self, ):
-        """Shutdown the login server and thread
-
-        :returns: None
-        :rtype: None
-        :raises: None
-        """
-        log.debug('Shutting down the login server thread.')
-        self.login_server.shutdown()
-        self.login_server.server_close()
-        self.login_thread.join()
-
-    def get_auth_url(self, ):
-        """Return the url for the user to authorize PyTwitcher
-
-        :returns: The url the user should visit to authorize PyTwitcher
-        :rtype: :class:`str`
-        :raises: None
-        """
-        return self.authorization_url(AUTHORIZATION_BASE_URL)[0]
-
     def get_chat_server(self, channel):
         """Get an appropriate chat server for the given channel
 
@@ -583,31 +637,44 @@ class TwitchSession(requests_oauthlib.OAuth2Session):
         json = r.json()
         servers = json['chat_servers']
 
-        with default(self):
-            try:
-                r = self.get('http://twitchstatus.com/api/status?type=chat')
-            except requests.HTTPError:
-                log.debug('Error getting chat server status. Using random one.')
-                address = servers[0]
-            else:
-                reference = sorted([chat.ChatServerStatus(**d) for d in r.json()])
-                address = None
-                for r in reference:
-                    for s in servers:
-                        if s == r:
-                            # found a chatserver that has the same address
-                            # than one of the chatserverstats.
-                            # since the stats are sorted for performance
-                            # the first hit is the best, thus break
-                            address = s
-                            break
-                    if address:
-                        # already found one, so no need to check the other
-                        # refernces, which are worse
-                        break
-                else:
-                    # No chatserver matched one of the stats, just pick one
-                    address = servers[0]
+        try:
+            with default(self):
+                r = self.get(TWITCH_STATUSURL)
+        except requests.HTTPError:
+            log.debug('Error getting chat server status. Using random one.')
+            address = servers[0]
+        else:
+            stats = [chat.ChatServerStatus(**d) for d in r.json()]
+            address = self._find_best_chat_server(servers, stats)
 
         server, port = address.split(':')
         return server, int(port)
+
+    @staticmethod
+    def _find_best_chat_server(servers, stats):
+        """Find the best from servers by comparing with the stats
+
+        :param servers: a list if server adresses, e.g. ['0.0.0.0:80']
+        :type servers: :class:`list` of :class:`str`
+        :param stats: list of server statuses
+        :type stats: :class:`list` of :class:`chat.ChatServerStatus`
+        :returns: the best server adress
+        :rtype: :class:`str`
+        :raises: None
+        """
+        best = servers[0]  # In case we sind no match with any status
+        stats.sort()  # gets sorted for performance
+        for stat in stats:
+            for server in servers:
+                if server == stat:
+                    # found a chatserver that has the same address
+                    # than one of the chatserverstats.
+                    # since the stats are sorted for performance
+                    # the first hit is the best, thus break
+                    best = server
+                    break
+            if best:
+                # already found one, so no need to check the other
+                # statuses, which are worse
+                break
+        return best

@@ -54,3 +54,8 @@ History
 ++++++++++++++++++++++++++++++++++++++++
 
 * Fix coverage reports via travis
+
+0.6.0 (2015-05-16)
+++++++++++++++++++++++++++++++++++++++++
+
+* Add limit for sending messages
