@@ -443,7 +443,9 @@ def assert_html_response(r, filename):
 
 
 @pytest.fixture(scope='function')
-def login_server(request, user1):
+def login_server(request, user1, monkeypatch):
+    monkeypatch.setattr(constants, 'LOGIN_SERVER_ADRESS', ('', 0))
+
     def query_login_user():
         return user1
     ts = session.TwitchSession()
@@ -453,21 +455,27 @@ def login_server(request, user1):
         ts.shutdown_login_server()
     request.addfinalizer(shutdown)
     ts.start_login_server()
+    port = ts.login_server.socket.getsockname()[1]
+    redirecturi = constants.REDIRECT_URI.replace('42420', str(port))
+    monkeypatch.setattr(constants, 'REDIRECT_URI', redirecturi)
     return ts
 
 
 @pytest.mark.parametrize('execution_number', range(2))
 def test_login(login_server, auth_redirect_uri, execution_number, user1json):
-    scopes = '+'.join(session.SCOPES)
-    ruri = constants.REDIRECT_URI
     ts = login_server
+    port = ts.login_server.socket.getsockname()[1]
+    auth_redirect_uri = auth_redirect_uri.replace('42420', str(port))
+
+    scopes = '+'.join(session.SCOPES)
     with pytest.raises(requests.HTTPError):
-        ts.get(ruri + '/failingurl')
+        ts.get(constants.REDIRECT_URI + '/failingurl')
     r = ts.get(auth_redirect_uri)
     assert_html_response(r, 'extract_token_site.html')
-    r = ts.get(ruri + '/success')
+    r = ts.get(constants.REDIRECT_URI + '/success')
     assert_html_response(r, 'success_site.html')
-    ts.post(ruri + '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=%s' % scopes)
+    ts.post(constants.REDIRECT_URI +
+            '/?access_token=u7amjlndoes3xupi4bb1jrzg2wrcm1&scope=%s' % scopes)
     assert ts.token == {'access_token': 'u7amjlndoes3xupi4bb1jrzg2wrcm1',
                         'scope': session.SCOPES}
     assert ts.current_user, 'Current user should have been automatically set \
