@@ -15,9 +15,9 @@ if sys.version_info[0] == 2:
 else:
     import queue
 
+from . import exceptions 
 
 log = logging.getLogger(__name__)
-
 
 __all__ = ['IRCClient']
 
@@ -845,13 +845,15 @@ class IRCClient(irc.client.SimpleIRCClient):
         :param queuesize: The queuesize for storing messages in :data:`IRCClient.messages`.
                           If 0, unlimited size.
         :type queuesize: :class:`int`
-        :raises: None
+        :raises: :class:`exceptions.NotAuthorizedError`
         """
         super(IRCClient, self).__init__()
         self.session = session
-        """a authenticated session. Used for quering
+        """an authenticated session. Used for quering
         the right server and the login username."""
-        self.login_user = self.session.current_user or self.session.fetch_login_user()
+        if not self.session.authorized:
+            raise exceptions.NotAuthorizedError('Please authorize the session first.')
+        self.login_user = self.session.current_user
         """The user that is used for logging in to the chat"""
         self.channel = channel
         """The channel to connect to.
