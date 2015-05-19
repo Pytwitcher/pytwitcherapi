@@ -1,6 +1,6 @@
 import pytest
 
-from pytwitcherapi import chat
+from pytwitcherapi.chat import client
 
 
 @pytest.fixture(scope='session')
@@ -30,4 +30,4 @@ def servers_json():
 
 @pytest.fixture(scope='function')
 def servers(servers_json):
-    return [chat.ChatServerStatus(**d) for d in servers_json]
+    return [client.ChatServerStatus(**d) for d in servers_json]

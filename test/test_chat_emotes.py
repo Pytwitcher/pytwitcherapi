@@ -1,18 +1,18 @@
 import pytest
 
-from pytwitcherapi import chat
+from pytwitcherapi.chat import message
 
 
 def test_eq():
-    e1 = chat.Emote(123, [(1, 2), (3, 4)])
-    e2 = chat.Emote(123, [(1, 2), (3, 4)])
-    e3 = chat.Emote(123, [(1, 2)])
+    e1 = message.Emote(123, [(1, 2), (3, 4)])
+    e2 = message.Emote(123, [(1, 2), (3, 4)])
+    e3 = message.Emote(123, [(1, 2)])
     assert e1 == e2
     assert not (e1 == e3)
 
 
-@pytest.mark.parametrize('estr,expected', [('123:0-2', chat.Emote(123, [(0, 2)])),
-                                           ('5:0-4,12-16', chat.Emote(5, [(0, 4), (12, 16)]))])
+@pytest.mark.parametrize('estr,expected', [('123:0-2', message.Emote(123, [(0, 2)])),
+                                           ('5:0-4,12-16', message.Emote(5, [(0, 4), (12, 16)]))])
 def test_from_str(estr, expected):
-    e = chat.Emote.from_str(estr)
+    e = message.Emote.from_str(estr)
     assert e == expected

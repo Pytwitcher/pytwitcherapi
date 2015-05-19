@@ -6,7 +6,8 @@ import irc.server
 import mock
 import pytest
 
-from pytwitcherapi import chat
+from pytwitcherapi import chat, exceptions
+from pytwitcherapi.chat import message, connection
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -66,7 +67,7 @@ class IRCServerClient(irc.server.IRCClient):
 def mock_get_waittime(monkeypatch):
     m = mock.Mock()
     m.return_value = 0
-    monkeypatch.setattr(chat.ServerConnection3, 'get_waittime', m)
+    monkeypatch.setattr(connection.ServerConnection3, 'get_waittime', m)
 
 
 @pytest.fixture(scope='function')
@@ -186,7 +187,7 @@ def assert_client_got_message(client, message):
     :param client: an irc client
     :type client: :class:`chat.IRCClient`
     :param message: the message to test against
-    :type message: :class:`chat.Message`
+    :type message: :class:`pytwitcherapi.chat.message.Message`
     :raises: :class:`AssertionError`
     """
     try:
@@ -198,9 +199,9 @@ def assert_client_got_message(client, message):
 
 @pytest.mark.timeout(10)
 def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
-    c = chat.Chatter('testuser2!testuser2@localhost')
-    m1 = chat.Message3(c, '#test_channel', 'mic check')
-    m2 = chat.Message3(c, '#test_channel', 'onetwo')
+    c = message.Chatter('testuser2!testuser2@localhost')
+    m1 = message.Message3(c, '#test_channel', 'mic check')
+    m2 = message.Message3(c, '#test_channel', 'onetwo')
 
     while not ircclient2.joined:
         time.sleep(0)
@@ -246,7 +247,7 @@ def mock_time_sleep(monkeypatch):
     timemock = mock.Mock()
     sleepmock = mock.Mock()
     timemock.sleep = sleepmock
-    monkeypatch.setattr(chat, 'time', timemock)
+    monkeypatch.setattr(connection, 'time', timemock)
     return sleepmock
 
 
@@ -254,7 +255,7 @@ def mock_time_sleep(monkeypatch):
 def mock_get_waittime2(monkeypatch):
     m = mock.Mock()
     m.return_value = 10
-    monkeypatch.setattr(chat.ServerConnection3, 'get_waittime', m)
+    monkeypatch.setattr(connection.ServerConnection3, 'get_waittime', m)
     return m
 
 
@@ -266,7 +267,12 @@ def mock_send_raw(monkeypatch):
 
 
 def test_send_raw_wait(mock_time_sleep, mock_get_waittime2, mock_send_raw):
-    con = chat.ServerConnection3(None)
+    con = connection.ServerConnection3(None)
     con.send_raw('Test')
     mock_time_sleep.assert_called_with(10)
     mock_send_raw.assert_called_with('Test')
+
+
+def test_not_authorized(ts, channel1):
+    with pytest.raises(exceptions.NotAuthorizedError):
+        chat.IRCClient(ts, channel1)
