@@ -180,7 +180,7 @@ def simulate_client_server_interaction(ircserver, ircclient):
     # wait for in and out connection
     quited = set()
     for i in range(2):
-        quited.add(IRCServerClient.quited.get(timeout=1))
+        quited.add(IRCServerClient.quited.get(timeout=5))
     return messages, quited
 
 
