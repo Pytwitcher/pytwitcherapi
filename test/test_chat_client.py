@@ -1,3 +1,4 @@
+import select
 import sys
 import threading
 
@@ -30,6 +31,27 @@ class IRCChatClient(chat.IRCClient):
         if self.in_connection.nickname in self.joined_nicks and\
            self.out_connection.nickname in self.joined_nicks:
             self.joined.set()
+
+    def _handle_one(self):
+        """
+        Handle one read/write cycle.
+
+        We override this one to handle read before write
+        """
+        ready_to_read, ready_to_write, in_error = select.select(
+            [self.request], [self.request], [self.request], 0.1)
+
+        if in_error:
+            raise self.Disconnect()
+
+        # See if the client has any commands for us.
+        if ready_to_read:
+            self._handle_incoming()
+
+        # Write any commands to the client
+        while self.send_queue and ready_to_write:
+            msg = self.send_queue.pop(0)
+            self._send(msg)
 
     def _connect(self, connection, ip, port, nickname, password):
         # we have to fake her
@@ -180,7 +202,7 @@ def simulate_client_server_interaction(ircserver, ircclient):
     # wait for in and out connection
     quited = set()
     for i in range(2):
-        quited.add(IRCServerClient.quited.get(timeout=5))
+        quited.add(IRCServerClient.quited.get(timeout=1))
     return messages, quited
 
 
