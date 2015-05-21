@@ -3,6 +3,9 @@ import re
 import irc.client
 
 
+__all__ = ['Tag', 'Emote', 'Chatter', 'Message3']
+
+
 class Tag(object):
     """An irc v3 tag
 

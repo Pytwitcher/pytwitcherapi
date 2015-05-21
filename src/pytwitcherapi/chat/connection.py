@@ -7,6 +7,8 @@ import irc.client
 
 from . import message
 
+__all__ = ['Event3', 'ServerConnection3']
+
 log = logging.getLogger(__name__)
 
 

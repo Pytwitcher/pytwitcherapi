@@ -2,5 +2,7 @@
 from __future__ import absolute_import
 
 from .client import *
+from .message import *
+from .connection import *
 
-__all__ = client.__all__
+__all__ = ['IRCClient']

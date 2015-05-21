@@ -6,7 +6,7 @@ import mock
 import pytest
 
 from pytwitcherapi import chat, exceptions
-from pytwitcherapi.chat import message, connection
+from pytwitcherapi.chat import connection
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -82,7 +82,7 @@ class IRCServerClient(irc.server.IRCClient):
 def mock_get_waittime(monkeypatch):
     m = mock.Mock()
     m.return_value = 0
-    monkeypatch.setattr(connection.ServerConnection3, 'get_waittime', m)
+    monkeypatch.setattr(chat.ServerConnection3, 'get_waittime', m)
 
 
 @pytest.fixture(scope='function')
@@ -234,9 +234,9 @@ def assert_client_got_message(client, message):
 
 
 def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
-    c = message.Chatter('testuser2out!testuser2out@localhost')
-    m1 = message.Message3(c, '#test_channel', 'mic check')
-    m2 = message.Message3(c, '#test_channel', 'onetwo')
+    c = chat.Chatter('testuser2out!testuser2out@localhost')
+    m1 = chat.Message3(c, '#test_channel', 'mic check')
+    m2 = chat.Message3(c, '#test_channel', 'onetwo')
 
     wait_for_client_joined(ircclient)
     wait_for_client_joined(ircclient2)
