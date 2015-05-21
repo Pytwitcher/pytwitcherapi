@@ -170,7 +170,8 @@ class IRCClient(irc.client.SimpleIRCClient):
     You can implement handlers for all sorts of events by
     subclassing and creating a method called ``on_<event.type>``.
     Note that :data:`IRCClient.out_connection` will only get to the
-    :meth:`IRCClient.on_welcome` event and then join a channel.
+    :meth:`IRCClient.on_welcome` event (and then join a channel)
+    and the :meth:`IRCClient.on_join` event.
     For all other events, the :data:`IRCClient.in_connection` will
     handle it and the other one will ignore it.
 
@@ -324,7 +325,7 @@ class IRCClient(irc.client.SimpleIRCClient):
     def _dispatcher(self, connection, event):
         """Dispatch events to on_<event.type> method, if present.
 
-        For out_connection only dispatch the welcome method, so
+        For out_connection only dispatch the welcome and join method, so
         it can join a channel.
 
         :param connection: the connection that received an event
@@ -336,7 +337,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         """
         log.debug("_dispatcher: %s", event.type)
 
-        if connection is self.out_connection and event.type != 'welcome':
+        if connection is self.out_connection and event.type not in ('welcome', 'join'):
             return
         method = getattr(self, "on_" + event.type, lambda c, e: None)
         method(connection, event)

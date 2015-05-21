@@ -1,6 +1,5 @@
 import sys
 import threading
-import time
 
 import irc.server
 import mock
@@ -18,14 +17,19 @@ else:
 class IRCChatClient(chat.IRCClient):
     """Little client that displays, when he joined a channel,
     so we can wait until sending messages"""
-    def __init__(self, session, channel, queuesize=0):
+    def __init__(self, session, channel, queuesize=0, signalat=0):
         super(IRCChatClient, self).__init__(session, channel, queuesize)
-        self.mutex = threading.RLock()
-        self.joined = []
+        self.joined = threading.Event()
+        self.joined_nicks = set()
+        self.signalat = signalat
         self.messagecount = 0  # total received messaged
+        self.received = threading.Event()
 
     def on_join(self, connection, event):
-        self.joined.append(event.source.nick)
+        self.joined_nicks.add(event.source.nick)
+        if self.in_connection.nickname in self.joined_nicks and\
+           self.out_connection.nickname in self.joined_nicks:
+            self.joined.set()
 
     def _connect(self, connection, ip, port, nickname, password):
         # we have to fake her
@@ -42,6 +46,8 @@ class IRCChatClient(chat.IRCClient):
     def store_message(self, *args, **kwargs):
         super(IRCChatClient, self).store_message(*args, **kwargs)
         self.messagecount += 1
+        if self.messagecount == self.signalat:
+            self.received.set()
 
 
 class IRCServerClient(irc.server.IRCClient):
@@ -51,24 +57,24 @@ class IRCServerClient(irc.server.IRCClient):
     Remember to reset him after each use, by setting the class
     variables to their default.
     """
-    password = []
-    joined = []
-    quited = []
-    messages = []
+    password = queue.Queue()
+    joined = queue.Queue()
+    quited = queue.Queue()
+    messages = queue.Queue()
 
     def handle_quit(self, params):
-        IRCServerClient.quited.append((self.client_ident(), params))
+        IRCServerClient.quited.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_quit(self, params)
 
     def handle_join(self, params):
-        IRCServerClient.joined.append((self.client_ident(), params))
+        IRCServerClient.joined.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_join(self, params)
 
     def handle_pass(self, params):
-        IRCServerClient.password.append((self.client_ident(), params))
+        IRCServerClient.password.put((self.client_ident(), params))
 
     def handle_privmsg(self, params):
-        IRCServerClient.messages.append((self.client_ident(), params))
+        IRCServerClient.messages.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_privmsg(self, params)
 
 
@@ -84,10 +90,10 @@ def ircserver(request):
     ircserver = irc.server.IRCServer(('0.0.0.0', 0), IRCServerClient)
 
     def fin():
-        IRCServerClient.password = []
-        IRCServerClient.joined = []
-        IRCServerClient.quited = []
-        IRCServerClient.messages = []
+        IRCServerClient.password = queue.Queue()
+        IRCServerClient.joined = queue.Queue()
+        IRCServerClient.quited = queue.Queue()
+        IRCServerClient.messages = queue.Queue()
     request.addfinalizer(fin)
     return ircserver
 
@@ -149,47 +155,54 @@ def ircthreads(request, ircserver, ircclient):
 
     request.addfinalizer(fin)
     t1.start()
-    time.sleep(1)
     t2.start()
-    time.sleep(1)
 
 
 def simulate_client_server_interaction(ircserver, ircclient):
     """Wait for the client to join, then send messages, then quit."""
-    while len(ircclient.joined) != 2:  # wait for in and out connection
-        time.sleep(0.1)
+    ircclient.joined.wait()  # wait for in and out connection
 
     ircclient.send_msg('hahaha')
     ircclient.send_msg('hihihi')
+
     # wait till messages have arrived at the server
-    while not len(IRCServerClient.messages) == 2:
-        time.sleep(0.1)
+    messages = set()
+    for i in range(2):
+        messages.add(IRCServerClient.messages.get())
 
     ircclient.shutdown()
     # wait till the client (in other thread) is actually shut down
     # wait for in and out connection
-    while len(IRCServerClient.quited) != 2:
-        time.sleep(0.1)
+    quited = set()
+    for i in range(2):
+        quited.add(IRCServerClient.quited.get())
+    return messages, quited
 
 
 @pytest.mark.timeout(6)
 def test_client(ircserver, ircclient, ircthreads, access_token):
-    simulate_client_server_interaction(ircserver, ircclient)
+    messages, quited = simulate_client_server_interaction(ircserver, ircclient)
     testchannel = '#test_channel'
     testuser = 'testuser%s!testuser%s@localhost'
     testuserin = testuser % ('in', 'in')
     testuserout = testuser % ('out', 'out')
-    expectedpw = [('None!None@localhost', 'oauth:%s' % access_token),
-                  ('None!None@localhost', 'oauth:%s' % access_token)]
-    expectedjoin = [(testuserin, testchannel),
-                    (testuserout, testchannel)]
-    expectedmessages = [(testuserout, '#test_channel :hahaha'),
-                        (testuserout, '#test_channel :hihihi')]
-    assert IRCServerClient.password == expectedpw
-    assert IRCServerClient.joined == expectedjoin
-    assert IRCServerClient.quited == [(testuserin, ''),
-                                      (testuserout, '')]
-    assert IRCServerClient.messages == expectedmessages
+    expectedpw = (('None!None@localhost', 'oauth:%s' % access_token),
+                  ('None!None@localhost', 'oauth:%s' % access_token))
+    expectedjoin = ((testuserin, testchannel),
+                    (testuserout, testchannel))
+    expectedmessages = ((testuserout, '#test_channel :hahaha'),
+                        (testuserout, '#test_channel :hihihi'))
+    passwords = set()
+    joined = set()
+    for i in range(2):
+        passwords.add(IRCServerClient.password.get())
+        joined.add(IRCServerClient.joined.get())
+
+    assert passwords == set(expectedpw)
+    assert joined == set(expectedjoin)
+    assert quited == set(((testuserin, ''),
+                          (testuserout, '')))
+    assert messages == set(expectedmessages)
 
 
 def test_disconnect(ircserver, ircclient):
@@ -222,11 +235,8 @@ def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
     m1 = message.Message3(c, '#test_channel', 'mic check')
     m2 = message.Message3(c, '#test_channel', 'onetwo')
 
-    while not ('testuser2in' in ircclient2.joined and
-               'testuser2out' in ircclient2.joined and
-               'testuserin' in ircclient.joined and
-               'testuserout' in ircclient.joined):
-        time.sleep(0.1)
+    ircclient.joined.wait()
+    ircclient2.joined.wait()
 
     for m in [m1, m2]:
         ircclient2.send_msg(m.text)
@@ -247,16 +257,13 @@ def _send_messages(client):
 
 @pytest.mark.timeout(10)  # if it times out, maybe the store_message method uses a blocking put
 def test_message_queue_full(ircclient, ircclient2, ircthreads, ircclient2thread):
-    while not ('testuser2in' in ircclient2.joined and
-               'testuser2out' in ircclient2.joined and
-               'testuserin' in ircclient.joined and
-               'testuserout' in ircclient.joined):
-        time.sleep(0.1)
+    ircclient2.signalat = 15
+    ircclient.joined.wait()
+    ircclient2.joined.wait()
 
     _send_messages(ircclient)
 
-    while ircclient2.messagecount != 15:
-        time.sleep(0.1)
+    ircclient2.received.wait()
 
     assert ircclient2.messages.full(), '15 messages have been sent. The queue should be full.'
     assert ircclient2.messages.qsize() == 10, '15 messages have been sent, but the queue should have a maxsize of 10'
