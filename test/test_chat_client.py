@@ -27,8 +27,6 @@ class IRCChatClient(chat.IRCClient):
         self.received = threading.Event()
 
     def on_join(self, connection, event):
-        #import socket
-        #self.in_connection.socket.shutdown(socket.SHUT_WR)
         self.joined_nicks.add(event.source.nick)
         if self.in_connection.nickname in self.joined_nicks and\
            self.out_connection.nickname in self.joined_nicks:
@@ -51,10 +49,6 @@ class IRCChatClient(chat.IRCClient):
         self.messagecount += 1
         if self.messagecount == self.signalat:
             self.received.set()
-        self.in_connection.privmsg('#test_channel', 'lol')
-        self.in_connection.socket.close()
-        self.out_connection.socket.close()
-
 
 
 class IRCServerClient(irc.server.IRCClient):
@@ -204,7 +198,6 @@ def simulate_client_server_interaction(ircserver, ircclient):
     messages = set()
     for i in range(2):
         messages.add(IRCServerClient.messages.get(timeout=1))
-        ircclient.messages.get(timeout=1)
 
     ircclient.shutdown()
     # wait till the client (in other thread) is actually shut down
