@@ -158,10 +158,14 @@ def ircthreads(request, ircserver, ircclient):
     t2.start()
 
 
+def wait_for_client_joined(client, timout=1.0):
+    client.joined.wait(1.0)  # wait for in and out connection
+    assert client.joined.is_set(), 'Both connections (in and out) of client %s did not join.' % client
+
+
 def simulate_client_server_interaction(ircserver, ircclient):
     """Wait for the client to join, then send messages, then quit."""
-    ircclient.joined.wait(1.0)  # wait for in and out connection
-    assert ircclient.joined.is_set(), 'Both connections did not join.'
+    wait_for_client_joined(ircclient)
 
     ircclient.send_msg('hahaha')
     ircclient.send_msg('hihihi')
@@ -234,10 +238,8 @@ def test_message_queue(ircclient, ircclient2, ircthreads, ircclient2thread):
     m1 = message.Message3(c, '#test_channel', 'mic check')
     m2 = message.Message3(c, '#test_channel', 'onetwo')
 
-    ircclient.joined.wait(1)
-    assert ircclient.joined.is_set(), 'Both connections did not join.'
-    ircclient2.joined.wait(1)
-    assert ircclient2.joined.is_set(), 'Both connections did not join.'
+    wait_for_client_joined(ircclient)
+    wait_for_client_joined(ircclient2)
 
     for m in [m1, m2]:
         ircclient2.send_msg(m.text)
@@ -258,10 +260,8 @@ def _send_messages(client):
 
 def test_message_queue_full(ircclient, ircclient2, ircthreads, ircclient2thread):
     ircclient2.signalat = 15
-    ircclient.joined.wait(1)
-    assert ircclient.joined.is_set(), 'Both connections did not join.'
-    ircclient2.joined.wait(1)
-    assert ircclient2.joined.is_set(), 'Both connections did not join.'
+    wait_for_client_joined(ircclient)
+    wait_for_client_joined(ircclient2)
 
     _send_messages(ircclient)
 
