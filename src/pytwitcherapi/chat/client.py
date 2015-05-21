@@ -369,9 +369,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        source = message.Chatter(event.source)
-        m = message.Message3(source, event.target, event.arguments[0], event.tags)
-
+        m = message.Message3.from_event(event)
         while True:
             try:
                 self.messages.put(m, block=False)

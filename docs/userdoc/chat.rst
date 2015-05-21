@@ -59,11 +59,14 @@ If you override :meth:`pytwitcherapi.IRCClient.on_pubmsg` or :meth:`pytwitcherap
 the super method::
 
 
+     from pytwitcherapi.chat import message
+
      class MyIRCClient(pytwitcherapi.IRCClient):
 
          def on_privmsg(self, connection, event):
              super(MyIRCClient, self).on_privmsg(connection, event)
-	     print 'Received message from %s: %s' % (event.source, event.arguments[0])
+
+             print message.Message3.from_event(event)
 
 
 But printing out messages is not really useful. You probably want to access them in another thread.
