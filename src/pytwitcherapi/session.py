@@ -12,7 +12,8 @@ import requests
 import requests.utils
 import requests_oauthlib
 
-from . import chat, constants, exceptions, models, oauth
+from . import constants, exceptions, models, oauth
+from pytwitcherapi.chat import client
 
 __all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
 
@@ -644,7 +645,7 @@ class TwitchSession(OAuthSession):
             log.debug('Error getting chat server status. Using random one.')
             address = servers[0]
         else:
-            stats = [chat.ChatServerStatus(**d) for d in r.json()]
+            stats = [client.ChatServerStatus(**d) for d in r.json()]
             address = self._find_best_chat_server(servers, stats)
 
         server, port = address.split(':')

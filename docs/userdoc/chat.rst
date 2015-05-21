@@ -59,16 +59,25 @@ If you override :meth:`pytwitcherapi.IRCClient.on_pubmsg` or :meth:`pytwitcherap
 the super method::
 
 
+     from pytwitcherapi import chat
+
      class MyIRCClient(pytwitcherapi.IRCClient):
 
          def on_privmsg(self, connection, event):
              super(MyIRCClient, self).on_privmsg(connection, event)
-	     print 'Received message from %s: %s' % (event.source, event.arguments[0])
+
+             print chat.Message3.from_event(event)
 
 
 But printing out messages is not really useful. You probably want to access them in another thread.
 All private and public messages are stored in a thread safe message queue. By default the queue stores the last 100 messages.
 You can alter the queuesize when creating a client. ``0`` will make the queue store all messages.
+
+.. Note:: The Client is using two connections. One for sending messages (:data:`pytwitcherapi.IRCClient.in_connection`) and
+	  one for receiving (:data:`pytwitcherapi.IRCClient.in_connection`) them.
+          With one message, you wouldn't revceive your own messages processed from the server (with tags).
+
+
 Here is a little example. To quit press ``CTRL-C``::
 
       import threading

@@ -1,10 +1,9 @@
-import time
-
 import irc.client
 import mock
 import pytest
 
 from pytwitcherapi import chat
+from pytwitcherapi.chat import connection
 
 
 @pytest.fixture(scope='function')
@@ -113,22 +112,24 @@ tags = [chat.Tag('aaa'), chat.Tag('bbb')]
 notagline = ':%s %s %s :Hallo'
 
 
-@pytest.fixture(scope='function', params=[(msgline, 'PRIVMSG', '#somechannel', 'pubmsg', tags),
-                                          (msgline, 'PRIVMSG', 'nick2!nick2@somehost', 'privmsg', tags),
-                                          (msgline, 'NOTICE', '#somechannel', 'pubnotice', tags),
-                                          (msgline, 'NOTICE', 'nick2!nick2@somehost', 'privnotice', tags),
-                                          (ctcpline, 'NOTICE', 'nick2!nick2@somehost', 'ctcpreply', tags),
-                                          (ctcpline, 'PRIVMSG', 'nick2!nick2@somehost', 'ctcp', tags),
-                                          (notagline, 'PRIVMSG', '#somechannel', 'pubmsg', []),
-                                          (notagline, 'PRIVMSG', 'nick2!nick2@somehost', 'privmsg', []),
-                                          (notagline, 'NOTICE', '#somechannel', 'pubnotice', []),
-                                          (notagline, 'NOTICE', 'nick2!nick2@somehost', 'privnotice', [])])
+@pytest.fixture(scope='function', params=[
+    (msgline, 'PRIVMSG', '#somechannel', 'pubmsg', tags),
+    (msgline, 'PRIVMSG', 'nick2!nick2@somehost', 'privmsg', tags),
+    (msgline, 'NOTICE', '#somechannel', 'pubnotice', tags),
+    (msgline, 'NOTICE', 'nick2!nick2@somehost', 'privnotice', tags),
+    (ctcpline, 'NOTICE', 'nick2!nick2@somehost', 'ctcpreply', tags),
+    (ctcpline, 'PRIVMSG', 'nick2!nick2@somehost', 'ctcp', tags),
+    (notagline, 'PRIVMSG', '#somechannel', 'pubmsg', []),
+    (notagline, 'PRIVMSG', 'nick2!nick2@somehost', 'privmsg', []),
+    (notagline, 'NOTICE', '#somechannel', 'pubnotice', []),
+    (notagline, 'NOTICE', 'nick2!nick2@somehost', 'privnotice', [])])
 def msgargs(request):
     line, cmd, target, event, tags = request.param
     source = 'nick1!nick!@somehost'
     line = line % (source, cmd, target)
-    expectedevents = [chat.Event3('all_raw_messages', source, None, [line], tags),
-                      chat.Event3(event, source, target, ['Hallo'], tags)]
+    expectedevents = [
+        chat.Event3('all_raw_messages', source, None, [line], tags),
+        chat.Event3(event, source, target, ['Hallo'], tags)]
     return line, cmd, source, target, expectedevents
 
 
@@ -143,9 +144,10 @@ def actionmsgargs(request):
     line, cmd, target, event, tags = request.param
     source = 'nick1!nick!@somehost'
     line = line % (source, cmd, target)
-    expectedevents = [chat.Event3('all_raw_messages', source, None, [line], tags),
-                      chat.Event3(event, source, target, ['ACTION', 'hahaha'], tags),
-                      chat.Event3('action', source, target, ['hahaha'], tags)]
+    expectedevents = [
+        chat.Event3('all_raw_messages', source, None, [line], tags),
+        chat.Event3(event, source, target, ['ACTION', 'hahaha'], tags),
+        chat.Event3('action', source, target, ['hahaha'], tags)]
     return line, cmd, source, target, expectedevents
 
 
@@ -158,14 +160,14 @@ def test_process_line_actionmsg(con, actionmsgargs):
 @pytest.fixture(scope='function')
 def mock_time_module(monkeypatch):
     m = mock.Mock()
-    monkeypatch.setattr(chat, 'time', m)
+    monkeypatch.setattr(connection, 'time', m)
 
 
 @pytest.fixture(scope='function')
 def mock_time(monkeypatch):
     m = mock.Mock()
     m.side_effect = range(50)
-    monkeypatch.setattr(chat.time, 'time', m)
+    monkeypatch.setattr(connection.time, 'time', m)
     return m
 
 

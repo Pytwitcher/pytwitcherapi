@@ -1,6 +1,7 @@
 import pytest
 
 from pytwitcherapi import chat
+from pytwitcherapi.chat import message
 
 
 @pytest.mark.parametrize('text,expected', [('hallo!', 'hallo!'),
@@ -8,15 +9,15 @@ from pytwitcherapi import chat
 def test_repr(text, expected):
     source = chat.Chatter('me')
     target = '#you'
-    message = chat.Message(source=source, target=target, text=text)
-    assert repr(message) == '<Message me to #you: %s>' % expected
+    msg = message.Message(source=source, target=target, text=text)
+    assert repr(msg) == '<Message me to #you: %s>' % expected
 
 
 def assert_message_attrs(message, **kwargs):
     """Assert that the given message has the expected attribute values
 
     :param message: the message to test
-    :type message: :class:`chat.Message`
+    :type message: :class:`message.Message`
     :param kwargs: keyword is the attribute to check,
                    value the expected attribute value
     """

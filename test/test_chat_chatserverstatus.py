@@ -1,4 +1,4 @@
-from pytwitcherapi import chat
+from pytwitcherapi.chat import client
 
 
 def test_eq_str(servers):
@@ -12,7 +12,7 @@ def test_noteq_str(servers):
 
 
 def test_eq(servers):
-    s1 = chat.ChatServerStatus('192.16.64.11:80')
+    s1 = client.ChatServerStatus('192.16.64.11:80')
     assert servers[0] == s1,\
         """Servers with same address should be equal"""
     assert not (s1 == 123),\
