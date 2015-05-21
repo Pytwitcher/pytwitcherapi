@@ -32,27 +32,6 @@ class IRCChatClient(chat.IRCClient):
            self.out_connection.nickname in self.joined_nicks:
             self.joined.set()
 
-    def _handle_one(self):
-        """
-        Handle one read/write cycle.
-
-        We override this one to handle read before write
-        """
-        ready_to_read, ready_to_write, in_error = select.select(
-            [self.request], [self.request], [self.request], 0.1)
-
-        if in_error:
-            raise self.Disconnect()
-
-        # See if the client has any commands for us.
-        if ready_to_read:
-            self._handle_incoming()
-
-        # Write any commands to the client
-        while self.send_queue and ready_to_write:
-            msg = self.send_queue.pop(0)
-            self._send(msg)
-
     def _connect(self, connection, ip, port, nickname, password):
         # we have to fake her
         # the test server cannot handle 2 connections from the same
@@ -83,6 +62,27 @@ class IRCServerClient(irc.server.IRCClient):
     joined = queue.Queue()
     quited = queue.Queue()
     messages = queue.Queue()
+
+    def _handle_one(self):
+        """
+        Handle one read/write cycle.
+
+        We override this one to handle read before write
+        """
+        ready_to_read, ready_to_write, in_error = select.select(
+            [self.request], [self.request], [self.request], 0.1)
+
+        if in_error:
+            raise self.Disconnect()
+
+        # See if the client has any commands for us.
+        if ready_to_read:
+            self._handle_incoming()
+
+        # Write any commands to the client
+        while self.send_queue and ready_to_write:
+            msg = self.send_queue.pop(0)
+            self._send(msg)
 
     def handle_quit(self, params):
         IRCServerClient.quited.put((self.client_ident(), params))
