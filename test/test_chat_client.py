@@ -27,6 +27,8 @@ class IRCChatClient(chat.IRCClient):
         self.received = threading.Event()
 
     def on_join(self, connection, event):
+        #import socket
+        #self.in_connection.socket.shutdown(socket.SHUT_WR)
         self.joined_nicks.add(event.source.nick)
         if self.in_connection.nickname in self.joined_nicks and\
            self.out_connection.nickname in self.joined_nicks:
@@ -49,6 +51,10 @@ class IRCChatClient(chat.IRCClient):
         self.messagecount += 1
         if self.messagecount == self.signalat:
             self.received.set()
+        self.in_connection.privmsg('#test_channel', 'lol')
+        self.in_connection.socket.close()
+        self.out_connection.socket.close()
+
 
 
 class IRCServerClient(irc.server.IRCClient):
@@ -82,7 +88,10 @@ class IRCServerClient(irc.server.IRCClient):
         # Write any commands to the client
         while self.send_queue and ready_to_write:
             msg = self.send_queue.pop(0)
-            self._send(msg)
+            try:
+                self._send(msg)
+            except OSError:
+                pass
 
     def handle_quit(self, params):
         IRCServerClient.quited.put((self.client_ident(), params))
@@ -98,7 +107,6 @@ class IRCServerClient(irc.server.IRCClient):
     def handle_privmsg(self, params):
         IRCServerClient.messages.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_privmsg(self, params)
-
 
 @pytest.fixture(scope='function')
 def mock_get_waittime(monkeypatch):
@@ -196,6 +204,7 @@ def simulate_client_server_interaction(ircserver, ircclient):
     messages = set()
     for i in range(2):
         messages.add(IRCServerClient.messages.get(timeout=1))
+        ircclient.messages.get(timeout=1)
 
     ircclient.shutdown()
     # wait till the client (in other thread) is actually shut down
