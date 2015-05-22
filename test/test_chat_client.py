@@ -82,7 +82,10 @@ class IRCServerClient(irc.server.IRCClient):
         # Write any commands to the client
         while self.send_queue and ready_to_write:
             msg = self.send_queue.pop(0)
-            self._send(msg)
+            try:
+                self._send(msg)
+            except OSError:
+                pass
 
     def handle_quit(self, params):
         IRCServerClient.quited.put((self.client_ident(), params))
@@ -98,7 +101,6 @@ class IRCServerClient(irc.server.IRCClient):
     def handle_privmsg(self, params):
         IRCServerClient.messages.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_privmsg(self, params)
-
 
 @pytest.fixture(scope='function')
 def mock_get_waittime(monkeypatch):

@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import functools
 import logging
 import sys
+import threading
 
 import irc.client
 
@@ -24,7 +25,10 @@ __all__ = ['IRCClient']
 class Reactor(irc.client.Reactor):
     """Reactor that can exit the process_forever loop.
 
-    Simply call :meth:`Reactor.shutdown`.
+    The reactor is responsible for managing the connections,
+    and handling the events that come in to the connections.
+
+    Simply call :meth:`Reactor.shutdown` while the reactor is in a loop.
 
     For more information see :class:`irc.client.Reactor`.
     """
@@ -50,7 +54,7 @@ class Reactor(irc.client.Reactor):
         super(Reactor, self).__init__(on_connect=on_connect,
                                       on_disconnect=on_disconnect,
                                       on_schedule=on_schedule)
-        self._looping = True
+        self._looping = threading.Event()
 
     def process_forever(self, timeout=0.2):
         """Run an infinite loop, processing data from connections.
@@ -65,8 +69,8 @@ class Reactor(irc.client.Reactor):
         # Otherwise no other thread would ever be able to change
         # the shared state of a Reactor object running this function.
         log.debug("process_forever(timeout=%s)", timeout)
-        self._looping = True
-        while self._looping:
+        self._looping.set()
+        while self._looping.is_set():
             self.process_once(timeout)
 
     def shutdown(self):
@@ -78,8 +82,7 @@ class Reactor(irc.client.Reactor):
         """
         log.debug('Shutting down %s' % self)
         self.disconnect_all()
-        with self.mutex:
-            self._looping = False
+        self._looping.clear()
 
 
 class Reactor3(Reactor):
@@ -174,6 +177,7 @@ class IRCClient(irc.client.SimpleIRCClient):
     and the :meth:`IRCClient.on_join` event.
     For all other events, the :data:`IRCClient.in_connection` will
     handle it and the other one will ignore it.
+    This behaviour is implemented in :meth:`IRCCLient._dispatcher`
 
     Little example with threads. Change ``input`` to ``raw_input`` for
     python 2::
