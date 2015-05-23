@@ -6,21 +6,9 @@ pytwitcherapi
     :target: https://pypi.python.org/pypi/pytwitcherapi
     :alt: PyPI version
 
-.. image:: https://pypip.in/py_versions/pytwitcherapi/badge.png?style=flat
-    :target: https://pypi.python.org/pypi/pytwitcherapi/
-    :alt: Supported Python versions
-
 .. image::  https://img.shields.io/travis/Pytwitcher/pytwitcherapi/master.png?style=flat
     :target: https://travis-ci.org/Pytwitcher/pytwitcherapi
     :alt: Build Status
-
-.. image:: https://pypip.in/status/pytwitcherapi/badge.png?style=flat
-    :target: https://pypi.python.org/pypi/pytwitcherapi/
-    :alt: Development Status
-
-.. image:: https://pypip.in/format/pytwitcherapi/badge.png?style=flat
-    :target: https://pypi.python.org/pypi/pytwitcherapi/
-    :alt: Download format
 
 .. image:: http://img.shields.io/pypi/dm/pytwitcherapi.png?style=flat
     :target: https://pypi.python.org/pypi/pytwitcherapi
