@@ -12,4 +12,4 @@ __all__ = [models.__all__ +
 
 __author__ = 'David Zuber'
 __email__ = 'zuber.david@gmx.de'
-__version__ = '0.6.0'
+__version__ = '0.7.1'

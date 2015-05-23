@@ -59,3 +59,14 @@ History
 ++++++++++++++++++++++++++++++++++++++++
 
 * Add limit for sending messages
+
+0.7.0 (2015-05-16)
+++++++++++++++++++++++++++++++++++++++++
+
+* IRCCLient manages two connections. Receives own messages from the server (with tags).
+* Improved test thread saftey
+
+0.7.1 (2015-05-22)
+++++++++++++++++++++++++++++++++++++++++
+
+* IRCClient shutdown is now thread-safe through events

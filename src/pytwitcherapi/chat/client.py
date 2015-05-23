@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import functools
 import logging
 import sys
+import threading
 
 import irc.client
 
@@ -24,7 +25,10 @@ __all__ = ['IRCClient']
 class Reactor(irc.client.Reactor):
     """Reactor that can exit the process_forever loop.
 
-    Simply call :meth:`Reactor.shutdown`.
+    The reactor is responsible for managing the connections,
+    and handling the events that come in to the connections.
+
+    Simply call :meth:`Reactor.shutdown` while the reactor is in a loop.
 
     For more information see :class:`irc.client.Reactor`.
     """
@@ -50,7 +54,7 @@ class Reactor(irc.client.Reactor):
         super(Reactor, self).__init__(on_connect=on_connect,
                                       on_disconnect=on_disconnect,
                                       on_schedule=on_schedule)
-        self._looping = True
+        self._looping = threading.Event()
 
     def process_forever(self, timeout=0.2):
         """Run an infinite loop, processing data from connections.
@@ -65,8 +69,8 @@ class Reactor(irc.client.Reactor):
         # Otherwise no other thread would ever be able to change
         # the shared state of a Reactor object running this function.
         log.debug("process_forever(timeout=%s)", timeout)
-        self._looping = True
-        while self._looping:
+        self._looping.set()
+        while self._looping.is_set():
             self.process_once(timeout)
 
     def shutdown(self):
@@ -78,8 +82,7 @@ class Reactor(irc.client.Reactor):
         """
         log.debug('Shutting down %s' % self)
         self.disconnect_all()
-        with self.mutex:
-            self._looping = False
+        self._looping.clear()
 
 
 class Reactor3(Reactor):
@@ -105,6 +108,8 @@ class Reactor3(Reactor):
 def _wrap_execute_delayed(funcname):
     """Warp the given method, so it gets executed by the reactor
 
+    Wrap a method of :data:`IRCCLient.out_connection`.
+
     The returned function should be assigned to a :class:`irc.client.SimpleIRCClient` class.
 
     :param funcname: the name of a :class:`irc.client.ServerConnection` method
@@ -113,7 +118,7 @@ def _wrap_execute_delayed(funcname):
     :raises: None
     """
     def method(self, *args, **kwargs):
-        f = getattr(self.connection, funcname)
+        f = getattr(self.out_connection, funcname)
         p = functools.partial(f, *args, **kwargs)
         self.reactor.execute_delayed(0, p)
     method.__name__ = funcname
@@ -163,6 +168,16 @@ class IRCClient(irc.client.SimpleIRCClient):
     There are a lot of methods that can make the client send
     commands while the client is in its event loop.
     These methods are wrapped ones of :class:`irc.client.ServerConnection`.
+    They will always use :data:`IRCClient.out_connection`!
+
+    You can implement handlers for all sorts of events by
+    subclassing and creating a method called ``on_<event.type>``.
+    Note that :data:`IRCClient.out_connection` will only get to the
+    :meth:`IRCClient.on_welcome` event (and then join a channel)
+    and the :meth:`IRCClient.on_join` event.
+    For all other events, the :data:`IRCClient.in_connection` will
+    handle it and the other one will ignore it.
+    This behaviour is implemented in :meth:`IRCCLient._dispatcher`
 
     Little example with threads. Change ``input`` to ``raw_input`` for
     python 2::
@@ -207,6 +222,11 @@ class IRCClient(irc.client.SimpleIRCClient):
         :raises: :class:`exceptions.NotAuthorizedError`
         """
         super(IRCClient, self).__init__()
+        del self.connection
+        self.in_connection = self.reactor.server()
+        """Connection that receives messages"""
+        self.out_connection = self.reactor.server()
+        """Connection that sends messages"""
         self.session = session
         """an authenticated session. Used for quering
         the right server and the login username."""
@@ -268,21 +288,63 @@ class IRCClient(irc.client.SimpleIRCClient):
         :rtype: None
         :raises: None
         """
+        connections = [self.in_connection, self.out_connection]
         self._channel = channel
         if not channel:
             self.target = None
-            if self.connection.connected:
-                self.connection.disconnect("Disconnect.")
+            for c in connections:
+                if c.connected:
+                    c.disconnect("Disconnect.")
             return
         self.target = '#%s' % channel.name
         ip, port = self.session.get_chat_server(channel)
-        nickname = username = self.login_user.name
+        nickname = self.login_user.name
         password = 'oauth:%s' % self.session.token['access_token']
         self.log = logging.getLogger(str(self))
-        self.connection.connect(server=ip, port=port,
-                                nickname=nickname,
-                                username=username,
-                                password=password)
+        for c in connections:
+            self._connect(c, ip, port, nickname, password)
+
+    def _connect(self, connection, ip, port, nickname, password):
+        """Connect the given connection
+
+        :param connection: the connection to connect to an irc server
+        :type connection: :class:`irc.client.ServerConnection`
+        :param ip: the ip to connect to
+        :type ip: :class:`str`
+        :param port: the port of the server
+        :type port: :class:`int`
+        :param nickname: the nickname to use
+        :type nickname: :class:`str`
+        :param password: the password to use. includes the oauth token
+        :type password: :class:`str`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        connection.connect(server=ip, port=port,
+                           nickname=nickname,
+                           username=nickname,
+                           password=password)
+
+    def _dispatcher(self, connection, event):
+        """Dispatch events to on_<event.type> method, if present.
+
+        For out_connection only dispatch the welcome and join method, so
+        it can join a channel.
+
+        :param connection: the connection that received an event
+        :type connection: :class:`irc.client.ServerConnection`
+        :param event: the event to dispatch
+        :type event: :class:`irc.client.Event`
+        :returns: None
+        :raises: None
+        """
+        log.debug("_dispatcher: %s", event.type)
+
+        if connection is self.out_connection and event.type not in ('welcome', 'join'):
+            return
+        method = getattr(self, "on_" + event.type, lambda c, e: None)
+        method(connection, event)
 
     def on_welcome(self, connection, event):
         """Handle the welcome event
@@ -311,9 +373,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         :type event: :class:`irc.client.Event`
         :returns: None
         """
-        source = message.Chatter(event.source)
-        m = message.Message3(source, event.target, event.arguments[0], event.tags)
-
+        m = message.Message3.from_event(event)
         while True:
             try:
                 self.messages.put(m, block=False)
