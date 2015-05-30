@@ -10,7 +10,7 @@ import pytest
 import requests
 import requests.utils
 
-from pytwitcherapi import constants, exceptions, models, session
+from pytwitcherapi import constants, exceptions, models, session, chat
 
 from . import conftest
 
@@ -490,3 +490,17 @@ def test_get_authurl(ts):
     assert url == 'https://api.twitch.tv/kraken/oauth2/authorize?\
 response_type=token&client_id=642a2vtmqfumca8hmfcpkosxlkmqifb\
 &redirect_uri=http%%3A%%2F%%2Flocalhost%%3A42420&scope=%s&state=a' % scopes
+
+
+def test_get_emote_picture(ts):
+    expecteddata = 'testpicdata'
+    mockresponse = mock.Mock()
+    mockresponse.content = expecteddata
+    requests.Session.request.return_value = mockresponse
+    e = chat.message.Emote(25, ())
+    data = ts.get_emote_picture(e, 2.0)
+    assert data == expecteddata,\
+        "Did not return the response content."
+    requests.Session.request.assert_called_with(
+        'GET', 'http://static-cdn.jtvnw.net/emoticons/v1/25/2.0',
+        allow_redirects=True)
