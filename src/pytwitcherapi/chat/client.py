@@ -8,9 +8,9 @@ import threading
 
 import irc.client
 
-from . import message
-from . import connection
 from pytwitcherapi import exceptions
+
+from . import connection, message
 
 if sys.version_info[0] == 2:
     import Queue as queue

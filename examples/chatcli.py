@@ -7,8 +7,8 @@ To exit, press CTRL-C.
 """
 
 import sys
-import webbrowser
 import threading
+import webbrowser
 
 import pytwitcherapi
 

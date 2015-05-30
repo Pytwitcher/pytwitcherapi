@@ -70,3 +70,9 @@ History
 ++++++++++++++++++++++++++++++++++++++++
 
 * IRCClient shutdown is now thread-safe through events
+
+0.7.2 (2015-05-30)
++++++++++++++++++++++++++++++++++++++++++
+
+* Add TwitchSession.get_emote_picture(emote, size).
+* Capabilities for chat: twitch.tv/membership, twitch.tv/commands, twitch.tv/tags
