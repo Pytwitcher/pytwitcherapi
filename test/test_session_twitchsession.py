@@ -10,7 +10,7 @@ import pytest
 import requests
 import requests.utils
 
-from pytwitcherapi import constants, exceptions, models, session, chat
+from pytwitcherapi import chat, constants, exceptions, models, session
 
 from . import conftest
 

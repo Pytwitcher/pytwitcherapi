@@ -12,8 +12,9 @@ import requests
 import requests.utils
 import requests_oauthlib
 
-from . import constants, exceptions, models, oauth
 from pytwitcherapi.chat import client
+
+from . import constants, exceptions, models, oauth
 
 __all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
 
