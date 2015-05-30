@@ -31,8 +31,8 @@ master_doc = 'index'
 project = u'pytwitcherapi'
 copyright = u'2015, David Zuber'
 
-version = '0.6.0'
-release = '0.6.0'
+version = '0.7.1'
+release = '0.7.1'
 
 exclude_patterns = ['_build']
 pygments_style = 'sphinx'
