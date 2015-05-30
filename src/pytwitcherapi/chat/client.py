@@ -154,8 +154,10 @@ def add_serverconnection_methods(cls):
         f = getattr(irc.client.ServerConnection, m)
         method.__doc__ = f.__doc__
         setattr(cls, method.__name__, method)
+    return cls
 
 
+@add_serverconnection_methods
 class IRCClient(irc.client.SimpleIRCClient):
     """Simple IRC client which can connect to a single
     :class:`pytwitcherapi.Channel`.
@@ -421,9 +423,6 @@ class IRCClient(irc.client.SimpleIRCClient):
         :raises: None
         """
         self.privmsg(target=self.target, text=message)
-
-
-add_serverconnection_methods(IRCClient)
 
 
 class ChatServerStatus(object):
