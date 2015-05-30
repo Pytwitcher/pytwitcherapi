@@ -8,9 +8,9 @@ import threading
 
 import irc.client
 
-from . import message
-from . import connection
 from pytwitcherapi import exceptions
+
+from . import connection, message
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -154,8 +154,10 @@ def add_serverconnection_methods(cls):
         f = getattr(irc.client.ServerConnection, m)
         method.__doc__ = f.__doc__
         setattr(cls, method.__name__, method)
+    return cls
 
 
+@add_serverconnection_methods
 class IRCClient(irc.client.SimpleIRCClient):
     """Simple IRC client which can connect to a single
     :class:`pytwitcherapi.Channel`.
@@ -206,6 +208,11 @@ class IRCClient(irc.client.SimpleIRCClient):
     """
 
     reactor_class = Reactor3
+    """The reactor class which dispatches events"""
+    capabilities = [':twitch.tv/membership',
+                    ':twitch.tv/commands',
+                    ':twitch.tv/tags']
+    """List of irc capabilities"""
 
     def __init__(self, session, channel, queuesize=100):
         """Initialize a new irc client which can connect to the given
@@ -358,11 +365,25 @@ class IRCClient(irc.client.SimpleIRCClient):
         :returns: None
         """
         if irc.client.is_channel(self.target):
-            connection.cap('LS')
-            connection.cap('REQ', 'twitch.tv/tags')
-            connection.cap('END')
+            if connection is self.in_connection:
+                self.negotiate_capabilities(connection)
+
             self.log.debug('Joining %s, %s', connection, event)
             connection.join(self.target)
+
+    def negotiate_capabilities(self, connection):
+        """Send :data:`IRCClient.capabilities` to the server.
+
+        :param connection: the connection to use for sending
+        :type connection: :class:`irc.client.ServerConnection`
+        :returns: None
+        :rtype: None
+        :raises: None
+        """
+        for cap in self.capabilities:
+            connection.cap('REQ', cap)
+        else:
+            connection.cap('END')
 
     def store_message(self, connection, event):
         """Store the message of event in :data:`IRCClient.messages`.
@@ -421,9 +442,6 @@ class IRCClient(irc.client.SimpleIRCClient):
         :raises: None
         """
         self.privmsg(target=self.target, text=message)
-
-
-add_serverconnection_methods(IRCClient)
 
 
 class ChatServerStatus(object):

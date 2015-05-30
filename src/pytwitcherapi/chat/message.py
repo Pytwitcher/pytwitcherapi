@@ -2,7 +2,6 @@ import re
 
 import irc.client
 
-
 __all__ = ['Tag', 'Emote', 'Chatter', 'Message3']
 
 

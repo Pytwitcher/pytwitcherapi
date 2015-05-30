@@ -62,6 +62,7 @@ class IRCServerClient(irc.server.IRCClient):
     joined = queue.Queue()
     quited = queue.Queue()
     messages = queue.Queue()
+    caps = queue.Queue()
 
     def _handle_one(self):
         """
@@ -102,6 +103,10 @@ class IRCServerClient(irc.server.IRCClient):
         IRCServerClient.messages.put((self.client_ident(), params))
         return irc.server.IRCClient.handle_privmsg(self, params)
 
+    def handle_cap(self, params):
+        IRCServerClient.caps.put((self.client_ident(), params))
+
+
 @pytest.fixture(scope='function')
 def mock_get_waittime(monkeypatch):
     m = mock.Mock()
@@ -118,6 +123,7 @@ def ircserver(request):
         IRCServerClient.joined = queue.Queue()
         IRCServerClient.quited = queue.Queue()
         IRCServerClient.messages = queue.Queue()
+        IRCServerClient.caps = queue.Queue()
     request.addfinalizer(fin)
     return ircserver
 
@@ -335,3 +341,18 @@ def test_send_raw_wait(mock_time_sleep, mock_get_waittime2, mock_send_raw):
 def test_not_authorized(ts, channel1):
     with pytest.raises(exceptions.NotAuthorizedError):
         chat.IRCClient(ts, channel1)
+
+
+def test_negotiate_capabilities(ircserver, ircclient, ircthreads):
+    source = 'testuserin!testuserin@localhost'
+    wait_for_client_joined(ircclient)
+    capnum = len(ircclient.capabilities)
+    if capnum:
+        assert IRCServerClient.caps.qsize() == capnum + 1,\
+            "Did not send all capabilities plus CAP END to server"
+    for cap in ircclient.capabilities:
+        expectedcap = (source,
+                       'REQ %s' % cap)
+        assert expectedcap == IRCServerClient.caps.get(timeout=1)
+    assert (source, 'END') == IRCServerClient.caps.get(timeout=1),\
+        "Should send END of capabilitie negotiation to server."
