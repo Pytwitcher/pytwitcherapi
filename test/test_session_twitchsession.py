@@ -39,31 +39,6 @@ def mock_session_get_viewers(monkeypatch):
 
 
 @pytest.fixture(scope='function')
-def playlist():
-    """Return a sample playlist text"""
-    p = """#EXTM3U
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="chunked",NAME="Source"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="chunked"
-sourclink
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="high",NAME="High"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="high"
-highlink
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="medium",NAME="Medium"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="medium"
-mediumlink
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="low",NAME="Low"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="low"
-lowlink
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="mobile",NAME="Mobile"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="mobile"
-mobilelink
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="audio_only",NAME="Audio Only"
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="audio_only"
-audioonlylink"""
-    return p
-
-
-@pytest.fixture(scope='function')
 def mock_get_channel_access_token(monkeypatch):
     """Mock :meth:`session.TwitchSession.get_channel_access_token`"""
     monkeypatch.setattr(session.TwitchSession, 'get_channel_access_token', mock.Mock())
@@ -328,23 +303,19 @@ def test_fetch_login_user(request, sessionfixture, get_user_response,
         'GET', session.TWITCH_KRAKENURL + 'user', headers=headers, data=None)
 
 
-def test_get_channel_access_token(ts, channel1):
+def test_get_channel_access_token(ts, channel1, access_token_response):
     # test with different input types
     channels = [channel1.name, channel1]
-    mocktoken = {u'token': u'{"channel":"test_channel"}',
-                 u'mobile_restricted': False,
-                 u'sig': u'f63275898c8aa0b88a6e22acf95088323f006b9d'}
-    mockresponse = mock.Mock()
-    mockresponse.json.return_value = mocktoken
-    requests.Session.request.return_value = mockresponse
+    tokenjson = access_token_response.json()
+    requests.Session.request.return_value = access_token_response
 
     for c in channels:
         token, sig = ts.get_channel_access_token(c)
         requests.Session.request.assert_called_with(
             'GET', session.TWITCH_APIURL +
             'channels/%s/access_token' % channel1.name)
-        assert token == mocktoken['token']
-        assert sig == mocktoken['sig']
+        assert token == tokenjson['token']
+        assert sig == tokenjson['sig']
 
 
 def test_get_playlist(ts, mock_get_channel_access_token,
