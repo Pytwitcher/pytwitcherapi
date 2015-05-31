@@ -382,7 +382,7 @@ class IRCClient(irc.client.SimpleIRCClient):
         """
         for cap in self.capabilities:
             connection.cap('REQ', cap)
-        else:
+        if self.capabilities:
             connection.cap('END')
 
     def store_message(self, connection, event):
