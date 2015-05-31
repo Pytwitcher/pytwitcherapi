@@ -97,6 +97,7 @@ class RedirectHandler(server.BaseHTTPRequestHandler):
         :rtype: None
         :raises: None
         """
+        log.debug('POST')
         self._set_headers()
         # convert the parameters back to the original fragment
         # because we need to send the original uri to set_token

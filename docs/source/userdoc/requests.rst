@@ -16,25 +16,9 @@ To make it easier to use the different twitch APIs there are a few helpers.
 
 You can get easy access to three different twitch APIs:
 
-  * `Kraken API <https://github.com/justintv/Twitch-API>`_ witch uses :data:`pytwitcherapi.session.TWITCH_KRAKENURL`.
-  * Usher API with uses :data:`pytwitcherapi.session.TWITCH_USHERURL`.
-  * The old twitch API :data:`pytwitcherapi.session.TWITCH_APIURL`.
+  * `Kraken API <https://github.com/justintv/Twitch-API>`_ witch uses :data:`pytwitcherapi.session.TWITCH_KRAKENURL`. Use :meth:`pytwitcherapi.session.TwitchSession.kraken_request`.
+  * Usher API with uses :data:`pytwitcherapi.session.TWITCH_USHERURL`. Use :meth:`pytwitcherapi.session.TwitchSession.usher_request`.
+  * The old twitch API :data:`pytwitcherapi.session.TWITCH_APIURL`. Use :meth:`pytwitcherapi.session.TwitchSession.oldapi_request`.
 
-There are three contextmangers to help accessing the api.
-When you use one of the contextmangers, it will set the baseurl and headers on the session. So you can ommit the baseurl from your request. For regular requests,
-it is recommended to use the :func:`pytwitcherapi.default` context manager. This will make sure that no headers or baserul is set.::
-
-  import pytwitcherapi
-  
-  ts = pytwitcherapi.TwitchSession()
-  # use kraken api
-  with pytwitcherapi.kraken(ts):
-      # no need to use the baseurl or headers
-      response1 = ts.get('games/top')
-      # now use default again 
-      with pytwitcherapi.default(ts):
-          response2 = ts.get('http://localhost')
-      # goes back to the kraken api
-      response3 = ts.get('games/top')
-  # baseurl and headers are back to normal again
-  response3 = ts.get('http://localhost')
+.. literalinclude:: /snippets/apirequest.py
+   :linenos:

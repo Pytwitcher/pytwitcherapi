@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import session
+from pytwitcherapi import session, constants
 
 
 def create_mockresponse(returnvalue):
@@ -149,3 +149,22 @@ mobilelink
 #EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="audio_only"
 audioonlylink"""
     return p
+
+
+@pytest.fixture(scope='function')
+def login_server(request, user1, monkeypatch):
+    monkeypatch.setattr(constants, 'LOGIN_SERVER_ADRESS', ('', 0))
+
+    def query_login_user():
+        return user1
+    ts = session.TwitchSession()
+    ts.query_login_user = query_login_user
+
+    def shutdown():
+        ts.shutdown_login_server()
+    request.addfinalizer(shutdown)
+    ts.start_login_server()
+    port = ts.login_server.socket.getsockname()[1]
+    redirecturi = constants.REDIRECT_URI.replace('42420', str(port))
+    monkeypatch.setattr(constants, 'REDIRECT_URI', redirecturi)
+    return ts

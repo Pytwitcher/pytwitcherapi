@@ -363,25 +363,6 @@ def assert_html_response(r, filename):
     assert r.content == html.encode('utf-8')
 
 
-@pytest.fixture(scope='function')
-def login_server(request, user1, monkeypatch):
-    monkeypatch.setattr(constants, 'LOGIN_SERVER_ADRESS', ('', 0))
-
-    def query_login_user():
-        return user1
-    ts = session.TwitchSession()
-    ts.query_login_user = query_login_user
-
-    def shutdown():
-        ts.shutdown_login_server()
-    request.addfinalizer(shutdown)
-    ts.start_login_server()
-    port = ts.login_server.socket.getsockname()[1]
-    redirecturi = constants.REDIRECT_URI.replace('42420', str(port))
-    monkeypatch.setattr(constants, 'REDIRECT_URI', redirecturi)
-    return ts
-
-
 @pytest.mark.parametrize('execution_number', range(2))
 def test_login(login_server, auth_redirect_uri, execution_number, user1json):
     ts = login_server
