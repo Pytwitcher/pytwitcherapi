@@ -76,3 +76,10 @@ History
 
 * Add TwitchSession.get_emote_picture(emote, size).
 * Capabilities for chat: twitch.tv/membership, twitch.tv/commands, twitch.tv/tags
+
+0.8.0 (2015-05-31)
++++++++++++++++++++++++++++++++++++++++++
+
+* Replace context managers for apis with dedicated methods. The context managers
+  made it difficult to use a session thread-safe because they relied (more heavily)
+  on the state of the session.

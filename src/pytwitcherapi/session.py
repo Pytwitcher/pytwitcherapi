@@ -1,7 +1,6 @@
 """API for communicating with twitch"""
 from __future__ import absolute_import
 
-import contextlib
 import functools
 import logging
 import threading
@@ -16,7 +15,7 @@ from pytwitcherapi.chat import client
 
 from . import constants, exceptions, models, oauth
 
-__all__ = ['default', 'kraken', 'usher', 'oldapi', 'needs_auth', 'TwitchSession']
+__all__ = ['needs_auth', 'TwitchSession']
 
 log = logging.getLogger(__name__)
 
@@ -42,111 +41,6 @@ CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
 
 SCOPES = ['user_read', 'chat_login']
 """The scopes that PyTwitcher needs"""
-
-
-@contextlib.contextmanager
-def _restore_old_context(session, newcontextname=None):
-    """Contextmanager that restores the previous headers and baseurl of a
-    :class:`TwitchSession`.
-
-    :param session: The session to restore
-    :type session: :class:`TwitchSession`
-    :param newcontextname: The name of the new context you use. E.g. if you
-                           use a kraken context to access the kraken url, then
-                           you would provide 'kraken'. This is just for
-                           logging purposes and can be ommited. It would log:
-                           ``"Using kraken context for requests."``.
-    :type newcontextname: :class:`str`
-    """
-    oldheaders = session.headers
-    oldbaseurl = session.baseurl
-    if newcontextname:
-        log.debug("Entering %s context for requests.", newcontextname)
-    try:
-        yield
-    finally:
-        session.headers = oldheaders
-        session.baseurl = oldbaseurl
-        if newcontextname:
-            log.debug("Exiting %s context for requests.", newcontextname)
-
-
-@contextlib.contextmanager
-def default(session):
-    """Contextmanager for a :class:`TwitchSession` make sure, you are using no baseurl
-    and the default headers.
-
-    :param session: the session to make use the Kraken API
-    :type session: :class:`TwitchSession`
-    :returns: None
-    :rtype: None
-    :raises: None
-    """
-    with _restore_old_context(session, 'default'):
-        session.headers = requests.utils.default_headers()
-        session.baseurl = ""
-        yield
-
-
-@contextlib.contextmanager
-def kraken(session):
-    """Contextmanager for a :class:`TwitchSession` to make
-    shorter requests to the Kraken API.
-
-    Sets the baseurl of the session to :data:`TWITCH_KRAKENURL`
-    and ``Accept`` in headers to :data:`TWITCH_HEADER_ACCEPT`.
-
-    :param session: the session to make use the Kraken API
-    :type session: :class:`TwitchSession`
-    :returns: None
-    :rtype: None
-    :raises: None
-    """
-    with _restore_old_context(session, 'kraken'):
-        session.headers = requests.utils.default_headers()
-        session.headers['Accept'] = TWITCH_HEADER_ACCEPT
-        session.baseurl = TWITCH_KRAKENURL
-        yield
-
-
-@contextlib.contextmanager
-def usher(session):
-    """Contextmanager for a :class:`TwitchSession` to make
-    shorter requests to the Usher API.
-
-    Sets the baseurl of the session to :data:`TWITCH_USHERURL`
-    and uses default headers.
-
-    :param session: the session to make use the Usher API
-    :type session: :class:`TwitchSession`
-    :returns: None
-    :rtype: None
-    :raises: None
-    """
-    with _restore_old_context(session, 'usher'):
-        session.headers = requests.utils.default_headers()
-        session.baseurl = TWITCH_USHERURL
-        yield
-
-
-@contextlib.contextmanager
-def oldapi(session):
-    """Contextmanager for a :class:`TwitchSession` to make
-    shorter requests to the old twitch API.
-
-    Sets the baseurl of the session to :data:`TWITCH_APIURL`
-    and uses default headers.
-
-    :param session: the session to make use the old API
-    :type session: :class:`TwitchSession`
-    :returns: None
-    :rtype: None
-    :raises: None
-    """
-    with _restore_old_context(session, 'old api'):
-        session.headers = requests.utils.default_headers()
-        session.baseurl = TWITCH_APIURL
-        yield
 
 
 def needs_auth(meth):
@@ -259,11 +153,12 @@ class OAuthSession(requests_oauthlib.OAuth2Session):
 
 
 class TwitchSession(OAuthSession):
-    """Session that stores a baseurl that will be prepended for every request
+    """Session for making requests to the twitch api
 
-    You can use the contextmanagers :func:`kraken`, :func:`usher` and
-    :func:`oldapi` to easily use the different APIs.
-    They will set the baseurl and headers.
+    Use :meth:`TwitchSession.kraken_request`,
+    :meth:`TwitchSession.usher_request`,
+    :meth:`TwitchSession.oldapi_request` to make easier calls to the api
+    directly.
 
     To get authorization, the user has to grant PyTwitcher access.
     The workflow goes like this:
@@ -314,23 +209,65 @@ class TwitchSession(OAuthSession):
         if token:
             self.current_user = self.query_login_user()
 
-    def request(self, method, url, **kwargs):
-        """Constructs a :class:`requests.Request`, prepares it and sends it.
-        Raises HTTPErrors by default.
+    def kraken_request(self, method, endpoint, **kwargs):
+        """Make a request to one of the kraken api endpoints.
 
-        Instead of just using the url, uses :data:`TwitchSession.baseurl` + url.
+        Headers are automatically set to accept :data:`TWITCH_HEADER_ACCEPT`.
+        The url will be constructed of :data:`TWITCH_KRAKENURL` and
+        the given endpoint.
 
-        :param method: method for the new :class:`Request` object.
+        :param method: the request method
         :type method: :class:`str`
-        :param url: URL for the new :class:`Request` object.
-        :type url: :class:`str`
+        :param endpoint: the endpoint of the kraken api.
+                         The base url is automatically provided.
+        :type endpoint: :class:`str`
         :param kwargs: keyword arguments of :meth:`requests.Session.request`
         :returns: a resonse object
         :rtype: :class:`requests.Response`
         :raises: :class:`requests.HTTPError`
         """
-        fullurl = self.baseurl + url if self.baseurl else url
-        return super(TwitchSession, self).request(method, fullurl, **kwargs)
+        url = TWITCH_KRAKENURL + endpoint
+        headers = kwargs.setdefault('headers', {})
+        headers['Accept'] = TWITCH_HEADER_ACCEPT
+        return self.request(method, url, **kwargs)
+
+    def usher_request(self, method, endpoint, **kwargs):
+        """Make a request to one of the usher api endpoints.
+
+        The url will be constructed of :data:`TWITCH_USHERURL` and
+        the given endpoint.
+
+        :param method: the request method
+        :type method: :class:`str`
+        :param endpoint: the endpoint of the usher api.
+                         The base url is automatically provided.
+        :type endpoint: :class:`str`
+        :param kwargs: keyword arguments of :meth:`requests.Session.request`
+        :returns: a resonse object
+        :rtype: :class:`requests.Response`
+        :raises: :class:`requests.HTTPError`
+        """
+        url = TWITCH_USHERURL + endpoint
+        return self.request(method, url, **kwargs)
+
+    def oldapi_request(self, method, endpoint, **kwargs):
+        """Make a request to one of the old api endpoints.
+
+        The url will be constructed of :data:`TWITCH_APIURL` and
+        the given endpoint.
+
+        :param method: the request method
+        :type method: :class:`str`
+        :param endpoint: the endpoint of the old api.
+                         The base url is automatically provided.
+        :type endpoint: :class:`str`
+        :param kwargs: keyword arguments of :meth:`requests.Session.request`
+        :returns: a resonse object
+        :rtype: :class:`requests.Response`
+        :raises: :class:`requests.HTTPError`
+        """
+        url = TWITCH_APIURL + endpoint
+        return self.request(method, url, **kwargs)
 
     def fetch_viewers(self, game):
         """Query the viewers and channels of the given game and
@@ -340,8 +277,8 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`models.Game`
         :raises: None
         """
-        with kraken(self):
-            r = self.get('streams/summary', params={'game': game.name}).json()
+        r = self.kraken_request('GET', 'streams/summary',
+                                params={'game': game.name}).json()
         game.viewers = r['viewers']
         game.channels = r['channels']
         return game
@@ -358,11 +295,10 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`list` of :class:`models.Game` instances
         :raises: None
         """
-        with kraken(self):
-            r = self.get('search/games',
-                         params={'query': query,
-                                 'type': 'suggest',
-                                 'live': live})
+        r = self.kraken_request('GET', 'search/games',
+                                params={'query': query,
+                                        'type': 'suggest',
+                                        'live': live})
         games = models.Game.wrap_search(r)
         for g in games:
             self.fetch_viewers(g)
@@ -379,10 +315,9 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`list` of :class:`models.Game`
         :raises: None
         """
-        with kraken(self):
-            r = self.get('games/top',
-                         params={'limit': limit,
-                                 'offset': offset})
+        r = self.kraken_request('GET', 'games/top',
+                                params={'limit': limit,
+                                        'offset': offset})
         return models.Game.wrap_topgames(r)
 
     def get_game(self, name):
@@ -408,8 +343,7 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`models.Channel`
         :raises: None
         """
-        with kraken(self):
-            r = self.get('channels/' + name)
+        r = self.kraken_request('GET', 'channels/' + name)
         return models.Channel.wrap_get_channel(r)
 
     def search_channels(self, query, limit=25, offset=0):
@@ -425,11 +359,10 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`list` of :class:`models.Channel` instances
         :raises: None
         """
-        with kraken(self):
-            r = self.get('search/channels',
-                         params={'query': query,
-                                 'limit': limit,
-                                 'offset': offset})
+        r = self.kraken_request('GET', 'search/channels',
+                                params={'query': query,
+                                        'limit': limit,
+                                        'offset': offset})
         return models.Channel.wrap_search(r)
 
     def get_stream(self, channel):
@@ -445,8 +378,7 @@ class TwitchSession(OAuthSession):
         if isinstance(channel, models.Channel):
             channel = channel.name
 
-        with kraken(self):
-            r = self.get('streams/' + channel)
+        r = self.kraken_request('GET', 'streams/' + channel)
         return models.Stream.wrap_get_stream(r)
 
     def get_streams(self, game=None, channels=None, limit=25, offset=0):
@@ -482,8 +414,7 @@ class TwitchSession(OAuthSession):
                   'game': game,
                   'channel': cparam}
 
-        with kraken(self):
-            r = self.get('streams', params=params)
+        r = self.kraken_request('GET', 'streams', params=params)
         return models.Stream.wrap_search(r)
 
     def search_streams(self, query, hls=False, limit=25, offset=0):
@@ -501,12 +432,11 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`list` of :class:`models.Stream` instances
         :raises: None
         """
-        with kraken(self):
-            r = self.get('search/streams',
-                         params={'query': query,
-                                 'hls': hls,
-                                 'limit': limit,
-                                 'offset': offset})
+        r = self.kraken_request('GET', 'search/streams',
+                                params={'query': query,
+                                        'hls': hls,
+                                        'limit': limit,
+                                        'offset': offset})
         return models.Stream.wrap_search(r)
 
     @needs_auth
@@ -523,10 +453,9 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`list`of :class:`models.Stream` instances
         :raises: :class:`exceptions.NotAuthorizedError`
         """
-        with kraken(self):
-            r = self.get('streams/followed',
-                         params={'limit': limit,
-                                 'offset': offset})
+        r = self.kraken_request('GET', 'streams/followed',
+                                params={'limit': limit,
+                                        'offset': offset})
         return models.Stream.wrap_search(r)
 
     def get_user(self, name):
@@ -538,8 +467,7 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`models.User`
         :raises: None
         """
-        with kraken(self):
-            r = self.get('user/' + name)
+        r = self.kraken_request('GET', 'user/' + name)
         return models.User.wrap_get_user(r)
 
     @needs_auth
@@ -550,8 +478,7 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`models.User`
         :raises: :class:`exceptions.NotAuthorizedError`
         """
-        with kraken(self):
-            r = self.get('user')
+        r = self.kraken_request('GET', 'user')
         return models.User.wrap_get_user(r)
 
     def get_playlist(self, channel):
@@ -570,8 +497,8 @@ class TwitchSession(OAuthSession):
         params = {'token': token, 'sig': sig,
                   'allow_audio_only': True,
                   'allow_source': True}
-        with usher(self):
-            r = self.get('channel/hls/%s.m3u8' % channel, params=params)
+        r = self.usher_request(
+            'GET', 'channel/hls/%s.m3u8' % channel, params=params)
         playlist = m3u8.loads(r.text)
         return playlist
 
@@ -617,8 +544,8 @@ class TwitchSession(OAuthSession):
         """
         if isinstance(channel, models.Channel):
             channel = channel.name
-        with oldapi(self):
-            r = self.get('channels/%s/access_token' % channel).json()
+        r = self.oldapi_request(
+            'GET', 'channels/%s/access_token' % channel).json()
         return r['token'], r['sig']
 
     def get_chat_server(self, channel):
@@ -634,14 +561,13 @@ class TwitchSession(OAuthSession):
         :rtype: (:class:`str`, :class:`int`)
         :raises: None
         """
-        with oldapi(self):
-            r = self.get('channels/%s/chat_properties' % channel.name)
+        r = self.oldapi_request(
+            'GET', 'channels/%s/chat_properties' % channel.name)
         json = r.json()
         servers = json['chat_servers']
 
         try:
-            with default(self):
-                r = self.get(TWITCH_STATUSURL)
+            r = self.get(TWITCH_STATUSURL)
         except requests.HTTPError:
             log.debug('Error getting chat server status. Using random one.')
             address = servers[0]
@@ -693,7 +619,6 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`str`
         :raises: None
         """
-        with default(self):
-            r = self.get('http://static-cdn.jtvnw.net/emoticons/v1/%s/%s' %
-                         (emote.emoteid, size))
+        r = self.get('http://static-cdn.jtvnw.net/emoticons/v1/%s/%s' %
+                     (emote.emoteid, size))
         return r.content

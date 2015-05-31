@@ -2,7 +2,7 @@ import mock
 import pytest
 import requests
 
-from pytwitcherapi import session
+from pytwitcherapi import session, constants
 
 
 def create_mockresponse(returnvalue):
@@ -116,3 +116,55 @@ def get_user_response(user1json):
     when calling the json method
     """
     return create_mockresponse(user1json)
+
+
+@pytest.fixture(scope='function')
+def access_token_response():
+    return create_mockresponse(
+        {u'token': u'{"channel":"test_channel"}',
+         u'mobile_restricted': False,
+         u'sig': u'f63275898c8aa0b88a6e22acf95088323f006b9d'})
+
+
+@pytest.fixture(scope='function')
+def playlist():
+    """Return a sample playlist text"""
+    p = """#EXTM3U
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="chunked",NAME="Source"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="chunked"
+sourclink
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="high",NAME="High"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="high"
+highlink
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="medium",NAME="Medium"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="medium"
+mediumlink
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="low",NAME="Low"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="low"
+lowlink
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="mobile",NAME="Mobile"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="mobile"
+mobilelink
+#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="audio_only",NAME="Audio Only"
+#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=128000,CODECS="mp4a.40.2",VIDEO="audio_only"
+audioonlylink"""
+    return p
+
+
+@pytest.fixture(scope='function')
+def login_server(request, user1, monkeypatch):
+    monkeypatch.setattr(constants, 'LOGIN_SERVER_ADRESS', ('', 0))
+
+    def query_login_user():
+        return user1
+    ts = session.TwitchSession()
+    ts.query_login_user = query_login_user
+
+    def shutdown():
+        ts.shutdown_login_server()
+    request.addfinalizer(shutdown)
+    ts.start_login_server()
+    port = ts.login_server.socket.getsockname()[1]
+    redirecturi = constants.REDIRECT_URI.replace('42420', str(port))
+    monkeypatch.setattr(constants, 'REDIRECT_URI', redirecturi)
+    return ts
