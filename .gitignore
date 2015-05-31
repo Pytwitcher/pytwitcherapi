@@ -52,7 +52,7 @@ settings_local.py
 
 # Sphinx documentation
 docs/_build/
-docs/reference
+docs/source/reference
 
 # Flymake
 *_flymake.py

@@ -12,34 +12,42 @@ To make it simple for the user, here is what should be done for authentication:
   - Call :meth:`pytwitcherapi.TwitchSession.start_login_server`.
     This will create a thread that serves a server on :data:`pytwitcherapi.constants.LOGIN_SERVER_ADRESS`.
     Once the user gets redirected, this server will pick up the request and
-    extract the token::
+    extract the token:
 
-      import pytwitcherapi
-      
-      ts = pytwitcherapi.TwitchSession()
-      ts.start_login_server()
+    .. literalinclude:: /snippets/auth.py
+       :linenos:
+       :lineno-match:
+       :lines: 1-4
 
   - Get the url :meth:`pytwitcherapi.TwitchSession.get_auth_url` and send
     the user to visit that url in his favorite webbrowser. He might have to login,
-    and allow pytwitcher, if he did not already::
+    and allow pytwitcher, if he did not already:
 
-      import webbrowser
-      url = ts.get_auth_url()
-      webbrowser.open(url)
+    .. literalinclude:: /snippets/auth.py
+       :linenos:
+       :lineno-match:
+       :lines: 6-8
 
   - Wait until the user finished login in. Then call
     :meth:`pytwitcherapi.TwitchSession.shutdown_login_server` to
-    shutdown the server and join the thread::
+    shutdown the server and join the thread:
 
-      raw_input("Press ENTER when finished")
-      ts.shutdown_login_server()
+    .. literalinclude:: /snippets/auth.py
+       :linenos:
+       :lineno-match:
+       :lines: 10-11
 
   - Check if the user authorized the session with
-    :meth:`pytwitcherapi.TwitchSession.authorized`::
+    :meth:`pytwitcherapi.TwitchSession.authorized`:
 
-      assert ts.authorized, "Authorization failed! Did the user allow it?"
-      print "Login User: %s" % ts.current_user
+    .. literalinclude:: /snippets/auth.py
+       :linenos:
+       :lineno-match:
+       :lines: 13-14
 
-  - Now you can call methods that require authentication::
+  - Now you can call methods that require authentication:
 
-      streams = ts.followed_streams()
+    .. literalinclude:: /snippets/auth.py
+       :linenos:
+       :lineno-match:
+       :lines: 16
