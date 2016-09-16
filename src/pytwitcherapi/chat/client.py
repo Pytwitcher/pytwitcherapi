@@ -36,24 +36,16 @@ class Reactor(irc.client.Reactor):
         pass
 
     def __init__(self, on_connect=__do_nothing,
-                 on_disconnect=__do_nothing,
-                 on_schedule=__do_nothing):
+                 on_disconnect=__do_nothing):
         """Initialize a reactor.
 
         :param on_connect: optional callback invoked when a new connection
                            is made.
         :param on_disconnect: optional callback invoked when a socket is
                               disconnected.
-        :param on_schedule: optional callback, usually supplied by an external
-                            event loop, to indicate in float seconds that the
-                            client needs to process events that many seconds
-                            in the future. An external event loop will
-                            implement this callback to schedule a call to
-                            process_timeout.
         """
         super(Reactor, self).__init__(on_connect=on_connect,
-                                      on_disconnect=on_disconnect,
-                                      on_schedule=on_schedule)
+                                      on_disconnect=on_disconnect)
         self._looping = threading.Event()
 
     def process_forever(self, timeout=0.2):
