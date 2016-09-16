@@ -25,3 +25,5 @@ Get streams and playlist for every game:
 
 As you can see games, channels, streams are wrapped into objects.
 See :class:`pytwitcherapi.Game`, :class:`pytwitcherapi.Channel`, :class:`pytwitcherapi.Stream`, :class:`pytwitcherapi.User`.
+
+You can use your own ``Client-ID`` for twitch by setting the environment variable ``PYTWITCHER_CLIENT_ID``.
