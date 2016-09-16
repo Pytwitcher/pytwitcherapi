@@ -83,3 +83,10 @@ History
 * Replace context managers for apis with dedicated methods. The context managers
   made it difficult to use a session thread-safe because they relied (more heavily)
   on the state of the session.
+
+0.9.0 (2016-09-16)
++++++++++++++++++++++++++++++++++++++++++
+
+* Remove ``on_schedule`` argument for irc client. ``irc >=15.0`` required.
+* `#17 <https://github.com/Pytwitcher/pytwitcherapi/pull/17>`_: Always submit a client id in the headers. Credits to `Coriou <https://github.com/Coriou>`_.
+* Client ID can be provided via environment variable ``PYTWITCHER_CLIENT_ID``.

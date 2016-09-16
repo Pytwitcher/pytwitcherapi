@@ -36,13 +36,13 @@ class Tox(TestCommand):
 
 
 long_description = read('README.rst', 'HISTORY.rst')
-install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'irc']
+install_requires = ['requests', 'requests-oauthlib', 'oauthlib', 'm3u8', 'irc>=15']
 tests_require = ['tox']
 
 
 setup(
     name='pytwitcherapi',
-    version='0.8.0',
+    version='0.9.0',
     description='Python API for interacting with twitch.tv',
     long_description=long_description,
     author='David Zuber',

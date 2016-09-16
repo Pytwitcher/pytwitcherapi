@@ -5,7 +5,7 @@ import sys
 import sphinx_rtd_theme
 
 thisdir = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(thisdir, '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(thisdir, '../../src')))
 
 # -- General configuration -----------------------------------------------------
 
@@ -31,8 +31,8 @@ master_doc = 'index'
 project = u'pytwitcherapi'
 copyright = u'2015, David Zuber'
 
-version = '0.8.0'
-release = '0.8.0'
+version = '0.9.0'
+release = '0.9.0'
 
 exclude_patterns = ['_build']
 pygments_style = 'sphinx'

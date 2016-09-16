@@ -16,7 +16,8 @@ from . import conftest
 
 @pytest.fixture(scope="function")
 def kraken_headers():
-    return {'Accept': session.TWITCH_HEADER_ACCEPT}
+    return {'Accept': session.TWITCH_HEADER_ACCEPT,
+            'Client-ID': session.CLIENT_ID}
 
 
 @pytest.fixture(scope="function")

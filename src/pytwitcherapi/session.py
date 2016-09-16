@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import functools
 import logging
+import os
 import threading
 
 import m3u8
@@ -36,8 +37,10 @@ TWITCH_STATUSURL = 'http://twitchstatus.com/api/status?type=chat'
 AUTHORIZATION_BASE_URL = 'https://api.twitch.tv/kraken/oauth2/authorize'
 """Authorisation Endpoint"""
 
-CLIENT_ID = '642a2vtmqfumca8hmfcpkosxlkmqifb'
-"""The client id of pytwitcher on twitch."""
+CLIENT_ID = os.environ.get("PYTWITCHER_CLIENT_ID") or '642a2vtmqfumca8hmfcpkosxlkmqifb'
+"""The client id of pytwitcher on twitch.
+Use environment variable ``PYTWITCHER_CLIENT_ID`` or pytwitcher default value.
+"""
 
 SCOPES = ['user_read', 'chat_login']
 """The scopes that PyTwitcher needs"""
@@ -213,6 +216,7 @@ class TwitchSession(OAuthSession):
         """Make a request to one of the kraken api endpoints.
 
         Headers are automatically set to accept :data:`TWITCH_HEADER_ACCEPT`.
+        Also the client id from :data:`CLIENT_ID` will be set.
         The url will be constructed of :data:`TWITCH_KRAKENURL` and
         the given endpoint.
 
@@ -229,6 +233,7 @@ class TwitchSession(OAuthSession):
         url = TWITCH_KRAKENURL + endpoint
         headers = kwargs.setdefault('headers', {})
         headers['Accept'] = TWITCH_HEADER_ACCEPT
+        headers['Client-ID'] = CLIENT_ID  # https://github.com/justintv/Twitch-API#rate-limits
         return self.request(method, url, **kwargs)
 
     def usher_request(self, method, endpoint, **kwargs):
