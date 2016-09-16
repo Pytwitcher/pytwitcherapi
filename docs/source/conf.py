@@ -5,7 +5,7 @@ import sys
 import sphinx_rtd_theme
 
 thisdir = os.path.abspath(os.path.dirname(__file__))
-sys.path.insert(0, os.path.abspath(os.path.join(thisdir, '../src')))
+sys.path.insert(0, os.path.abspath(os.path.join(thisdir, '../../src')))
 
 # -- General configuration -----------------------------------------------------
 
