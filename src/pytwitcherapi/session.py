@@ -233,7 +233,7 @@ class TwitchSession(OAuthSession):
         url = TWITCH_KRAKENURL + endpoint
         headers = kwargs.setdefault('headers', {})
         headers['Accept'] = TWITCH_HEADER_ACCEPT
-        headers['Client-ID'] = CLIENT_ID # https://github.com/justintv/Twitch-API#rate-limits
+        headers['Client-ID'] = CLIENT_ID  # https://github.com/justintv/Twitch-API#rate-limits
         return self.request(method, url, **kwargs)
 
     def usher_request(self, method, endpoint, **kwargs):
