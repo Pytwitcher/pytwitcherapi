@@ -90,3 +90,10 @@ History
 * Remove ``on_schedule`` argument for irc client. ``irc >=15.0`` required.
 * `#17 <https://github.com/Pytwitcher/pytwitcherapi/pull/17>`_: Always submit a client id in the headers. Credits to `Coriou <https://github.com/Coriou>`_.
 * Client ID can be provided via environment variable ``PYTWITCHER_CLIENT_ID``.
+
+0.9.1 (2016-09-18)
++++++++++++++++++++++++++++++++++++++++++
+
+* Make example chat client python 3 compatible
+* `#16 <https://github.com/Pytwitcher/pytwitcherapi/issues/16>`_: Ignore unknown arguments from twitchstatus
+* Use Client ID for old api requests as well
