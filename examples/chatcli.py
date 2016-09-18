@@ -6,6 +6,7 @@ You can also type messages and send them.
 To exit, press CTRL-C.
 """
 
+import logging
 import sys
 import threading
 import webbrowser
@@ -15,18 +16,20 @@ import pytwitcherapi
 if sys.version_info[0] == 3:
     raw_input = input
 
+log = logging.getLogger("chat")
+logging.basicConfig(level=logging.INFO)
+
 
 class IRCClient(pytwitcherapi.IRCClient):
     """This client will print out private and public messages"""
     def on_pubmsg(self, connection, event):
         super(IRCClient, self).on_pubmsg(connection, event)
         message = self.messages.get()
-        print '%s: %s' % (message.source.nickname, message.text)
-
+        log.info('%s: %s' % (message.source.nickname, message.text))
     def on_privmsg(self, connection, event):
         super(IRCClient, self).on_pubmsg(connection, event)
         message = self.messages.get()
-        print '%s: %s' % (message.source.nickname, message.text)
+        log.info('%s: %s' % (message.source.nickname, message.text))
 
 
 def authorize(session):
@@ -55,7 +58,7 @@ def main():
         while True:
             message = raw_input('Type your message and hit ENTER to send:\n')
             client.send_msg(message)
-            print '%s: %s' % (session.current_user.name, message)
+            log.info('%s: %s' % (session.current_user.name, message))
     finally:
         client.shutdown()
         t.join()

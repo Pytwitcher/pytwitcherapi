@@ -446,7 +446,7 @@ class ChatServerStatus(object):
 
     def __init__(self, server, ip=None, port=None,
                  status=None, errors=None,
-                 lag=None, description=''):
+                 lag=None, description='', **kwargs):
         """Initialize a chat server status.
 
         :param server: the server address including port. E.g. ``"0.0.0.0:80"``
@@ -464,6 +464,8 @@ class ChatServerStatus(object):
         :param description: Wheter it is a main chat server or
                             event server or group chat.
         :type description: :class:`str`
+
+        All other keyword arguments are ignored.
         """
         self.address = server
         i, p = self.address.split(':')

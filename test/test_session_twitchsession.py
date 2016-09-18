@@ -21,6 +21,11 @@ def kraken_headers():
 
 
 @pytest.fixture(scope="function")
+def oldapi_headers():
+    return {'Client-ID': session.CLIENT_ID}
+
+
+@pytest.fixture(scope="function")
 def mock_fetch_viewers(monkeypatch):
     """Mock the fetch_viewers method of :class:`session.TwitchSession`"""
     monkeypatch.setattr(session.TwitchSession, "fetch_viewers", mock.Mock())
@@ -58,11 +63,11 @@ def test_request_kraken(ts, mock_session, kraken_headers):
         "GET", session.TWITCH_KRAKENURL + url, headers=kraken_headers, data=None)
 
 
-def test_request_oldapi(ts, mock_session):
+def test_request_oldapi(ts, mock_session, oldapi_headers):
     url = "hallo"
     ts.oldapi_request("GET", url)
     requests.Session.request.assert_called_with(
-        "GET", session.TWITCH_APIURL + url)
+        "GET", session.TWITCH_APIURL + url, headers=oldapi_headers)
 
 
 def test_request_usher(ts, mock_session):
@@ -304,7 +309,7 @@ def test_fetch_login_user(request, sessionfixture, get_user_response,
         'GET', session.TWITCH_KRAKENURL + 'user', headers=headers, data=None)
 
 
-def test_get_channel_access_token(ts, channel1, access_token_response):
+def test_get_channel_access_token(ts, channel1, access_token_response, oldapi_headers):
     # test with different input types
     channels = [channel1.name, channel1]
     tokenjson = access_token_response.json()
@@ -314,7 +319,7 @@ def test_get_channel_access_token(ts, channel1, access_token_response):
         token, sig = ts.get_channel_access_token(c)
         requests.Session.request.assert_called_with(
             'GET', session.TWITCH_APIURL +
-            'channels/%s/access_token' % channel1.name)
+            'channels/%s/access_token' % channel1.name, headers=oldapi_headers)
         assert token == tokenjson['token']
         assert sig == tokenjson['sig']
 
