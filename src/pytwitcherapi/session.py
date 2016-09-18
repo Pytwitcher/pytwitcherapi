@@ -271,6 +271,8 @@ class TwitchSession(OAuthSession):
         :rtype: :class:`requests.Response`
         :raises: :class:`requests.HTTPError`
         """
+        headers = kwargs.setdefault('headers', {})
+        headers['Client-ID'] = CLIENT_ID  # https://github.com/justintv/Twitch-API#rate-limits
         url = TWITCH_APIURL + endpoint
         return self.request(method, url, **kwargs)
 
