@@ -112,7 +112,7 @@ def _wrap_execute_delayed(funcname):
     def method(self, *args, **kwargs):
         f = getattr(self.out_connection, funcname)
         p = functools.partial(f, *args, **kwargs)
-        self.reactor.execute_delayed(0, p)
+        self.reactor.scheduler.execute_after(0, p)
     method.__name__ = funcname
     return method
 
