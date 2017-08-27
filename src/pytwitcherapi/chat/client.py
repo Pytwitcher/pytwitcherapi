@@ -97,7 +97,7 @@ class Reactor3(Reactor):
         return c
 
 
-def _wrap_execute_delayed(funcname):
+def _wrap_execute_after(funcname):
     """Warp the given method, so it gets executed by the reactor
 
     Wrap a method of :data:`IRCCLient.out_connection`.
@@ -106,13 +106,13 @@ def _wrap_execute_delayed(funcname):
 
     :param funcname: the name of a :class:`irc.client.ServerConnection` method
     :type funcname: :class:`str`
-    :returns: a new function, that executes the given one via :class:`irc.client.Reactor.execute_delayed`
+    :returns: a new function, that executes the given one via :class:`irc.schedule.IScheduler.execute_after`
     :raises: None
     """
     def method(self, *args, **kwargs):
         f = getattr(self.out_connection, funcname)
         p = functools.partial(f, *args, **kwargs)
-        self.reactor.execute_delayed(0, p)
+        self.reactor.scheduler.execute_after(0, p)
     method.__name__ = funcname
     return method
 
@@ -123,7 +123,7 @@ def add_serverconnection_methods(cls):
 
     Basically it wraps a bunch of methdos from
     :class:`irc.client.ServerConnection` to be
-    :meth:`irc.client.Reactor.execute_delayed`.
+    :meth:`irc.schedule.IScheduler.execute_after`.
     That way, you can easily send, even if the IRCClient is running in
     :class:`IRCClient.process_forever` in another thread.
 
@@ -142,7 +142,7 @@ def add_serverconnection_methods(cls):
                'stats', 'time', 'topic', 'trace', 'user', 'userhost',
                'users', 'version', 'wallops', 'who', 'whois', 'whowas']
     for m in methods:
-        method = _wrap_execute_delayed(m)
+        method = _wrap_execute_after(m)
         f = getattr(irc.client.ServerConnection, m)
         method.__doc__ = f.__doc__
         setattr(cls, method.__name__, method)

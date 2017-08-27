@@ -97,3 +97,8 @@ History
 * Make example chat client python 3 compatible
 * `#16 <https://github.com/Pytwitcher/pytwitcherapi/issues/16>`_: Ignore unknown arguments from twitchstatus
 * Use Client ID for old api requests as well
+
+0.9.2 (2017-08-27)
++++++++++++++++++++++++++++++++++++++++++
+
+* Fix compatibility to ``irc>=16.0``. Thanks to `crey4fun <https://github.com/crey4fun>`_.
