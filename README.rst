@@ -26,7 +26,7 @@ pytwitcherapi
     :target: http://pytwitcherapi.readthedocs.org/en/latest/
     :alt: Documentation
 
-**This project is not maintained anymore!**
+**This project is not developed anymore!**
 
 Twitch is a trademark or registered trademark of Twitch Interactive, Inc. in the U.S. and/or other countries. "pytwitcher" and "pytwitcherapi" is not operated by, sponsored by, or affiliated with Twitch Interactive, Inc. in any way.
 

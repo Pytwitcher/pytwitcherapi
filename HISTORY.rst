@@ -102,3 +102,8 @@ History
 +++++++++++++++++++++++++++++++++++++++++
 
 * Fix compatibility to ``irc>=16.0``. Thanks to `crey4fun <https://github.com/crey4fun>`_.
+
+0.9.3 (2017-08-27)
++++++++++++++++++++++++++++++++++++++++++
+
+* Re-release of ``0.9.2``
