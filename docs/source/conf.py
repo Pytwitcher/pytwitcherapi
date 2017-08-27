@@ -63,7 +63,7 @@ autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance']
 # -- Intersphinx Config ---------------------------------------------------
 intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None),
                        'requests': ('http://docs.python-requests.org/en/latest/', None),
-                       'irc': ('https://pythonhosted.org/irc/', None)}
+                       'irc': ('http://python-irc.readthedocs.io/en/latest/', None)}
 
 autosummary_generate = True
 

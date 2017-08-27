@@ -3,8 +3,8 @@ Authentication
 --------------
 
 For some methods of :class:`pytwitcherapi.TwitchSession`, the user needs to grant pytwitcher authorization.
-Twitch `Authentication <https://github.com/justintv/Twitch-API/blob/master/authentication.md>`_ is based on OAuth.
-We use the `implicit grant workflow <https://github.com/justintv/Twitch-API/blob/master/authentication.md>`_.
+Twitch `Authentication <https://dev.twitch.tv/docs/v5/guides/authentication/>`_ is based on OAuth.
+We use the `implicit grant workflow <https://dev.twitch.tv/docs/v5/guides/authentication/#oauth-implicit-code-flow-user-access-tokens>`_.
 In short, the user visits a website. Has to login, and allow pytwitcher. Twitch will redirect him to :data:`pytwitcherapi.constants.REDIRECT_URI`.
 In the url fragment of that redirection, one can find the token we need.
 To make it simple for the user, here is what should be done for authentication:
