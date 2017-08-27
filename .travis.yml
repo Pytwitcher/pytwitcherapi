@@ -6,10 +6,10 @@ env:
   - TOXENV=check
   - TOXENV=2.7,coveralls
   - TOXENV=2.7-nocover
-  - TOXENV=3.3,coveralls
-  - TOXENV=3.3-nocover
   - TOXENV=3.4,coveralls
   - TOXENV=3.4-nocover
+  - TOXENV=3.6,coveralls
+  - TOXENV=3.6-nocover
 before_install:
 - python --version
 - virtualenv --version

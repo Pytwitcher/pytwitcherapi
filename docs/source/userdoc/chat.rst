@@ -3,8 +3,8 @@ Chat
 ====
 
 The twitch chat is based on the IRC protocol `RFC1459 <tools.ietf.org/html/rfc1459.html>`_.
-The official documentation on the twitch chat is here: `Twitch IRC Doc <https://github.com/justintv/Twitch-API/blob/master/IRC.md>`_.
-The `irc python lib <https://pythonhosted.org/irc/index.html>`_ might also be useful, because we use it as backend.
+The official documentation on the twitch chat is here: `Twitch IRC Doc <https://dev.twitch.tv/docs>`_.
+The `irc python lib <http://python-irc.readthedocs.io/en/latest/>`_ might also be useful, because we use it as backend.
 
 :class:`pytwitcherapi.IRCClient` is a simple client, which can only connect to one channel/server at a time.
 When building applications, you probably wanna run the IRCClient in another thread, so it doesn't block your application.
